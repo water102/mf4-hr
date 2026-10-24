@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhân sự MF14 - Công ty cổ phần MF14 | HRM & Google Sheets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Thư viện chính thức Google Identity Services SDK để đăng nhập tài khoản Google thật -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- ==================== CỔNG ĐĂNG NHẬP & XÁC THỰC GOOGLE THẬT ==================== -->
+  <div class="login-screen-overlay" id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">MF</div>
+      <h2 class="login-title">Công ty cổ phần MF14</h2>
+      <p class="login-subtitle">Hệ thống Quản trị Nhân sự & Tiền lương (HRM)</p>
+
+      <!-- Hộp cấu hình Client ID cho Google OAuth2 Thật -->
+      <div style="margin-bottom: 18px; text-align: left; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 12px; font-weight: 700; color: #166534;">🔑 Google OAuth 2.0 Client ID:</span>
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="font-size: 11px; color: #0284c7; text-decoration: none; font-weight: 600;">Lấy Client ID ↗</a>
+        </div>
+        <input type="text" id="input-google-client-id" placeholder="Nhập Client ID (xxxx.apps.googleusercontent.com)" style="width: 100%; padding: 7px 10px; font-size: 11.5px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace;">
+        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+          * Cần thêm origin <code>http://127.0.0.1:8765</code> vào Google Cloud Console.
+        </div>
+      </div>
+
+      <div class="login-steps-box">
+        <!-- Bước 1: Đăng nhập Google -->
+        <div class="login-step-card active" id="step-1-card">
+          <div class="step-header">
+            <div class="step-num-badge" id="badge-step-1">1</div>
+            <div class="step-title">Đăng nhập tài khoản Google</div>
+          </div>
+          <div class="step-desc" id="desc-step-1">
+            Mở cửa sổ xác thực bảo mật chính thức của Google để chọn tài khoản của bạn.
+          </div>
+          <button class="btn-google-sign-in" id="btn-login-google">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.41l4.02-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"/></svg>
+            <span id="txt-login-btn">Đăng nhập bằng tài khoản Google</span>
+          </button>
+        </div>
+
+        <!-- Bước 2: Cấp quyền Sheets & Drive -->
+        <div class="login-step-card" id="step-2-card">
+          <div class="step-header">
+            <div class="step-num-badge" id="badge-step-2">2</div>
+            <div class="step-title">Cấp quyền thao tác Bảng tính & Drive</div>
+          </div>
+          <div class="step-desc">
+            Cấp quyền OAuth2 cho phép hệ thống đọc/ghi bảng tính và thư mục scan:
+          </div>
+          <div class="permission-tags-list">
+            <div class="perm-tag-row">
+              <span style="color:#059669; font-weight:700;">✓</span>
+              <span><strong>Google Sheets:</strong> Thao tác dữ liệu nhân sự (ID: <code>1g-5OPng...</code>)</span>
+            </div>
+            <div class="perm-tag-row">
+              <span style="color:#059669; font-weight:700;">✓</span>
+              <span><strong>Google Drive:</strong> Lưu trữ bản scan HĐLĐ (Thư mục: <code>1N2_STeZ...</code>)</span>
+            </div>
+          </div>
+          <button class="btn-grant-scope" id="btn-grant-access" disabled>
+            <span>🔑 Xác nhận & Cấp quyền Google Sheets & Drive</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-badge">MF</div>
+      <div class="company-info">
+        <h1>Nhân sự MF14</h1>
+        <p>Công ty cổ phần MF14</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Tổng quan</div>
+      <div class="nav-item active" data-target="view-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Bảng điều hành</span>
+      </div>
+      <div class="nav-item" data-target="view-tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Việc cần xử lý</span>
+        <span class="nav-badge">14</span>
+      </div>
+
+      <div class="nav-section-title">Dữ liệu nhân sự</div>
+      <div class="nav-item" data-target="view-employees">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Nhân viên</span>
+      </div>
+      <div class="nav-item" data-target="view-contracts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Hợp đồng</span>
+      </div>
+      <div class="nav-item" data-target="view-timesheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Chấm công</span>
+      </div>
+      <div class="nav-item" data-target="view-leaves">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span>Nghỉ phép</span>
+      </div>
+      <div class="nav-item" data-target="view-payroll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span>Bảng lương</span>
+      </div>
+
+      <div class="nav-section-title">Hệ thống</div>
+      <div class="nav-item" data-target="view-setup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Kết nối Google Sheets & Drive</span>
+      </div>
+      <div class="nav-item" data-target="view-setup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Cài đặt</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div>Hôm nay: <strong>01/10/2026</strong></div>
+      <div style="margin-top: 4px; font-size:11px;">Thư mục dữ liệu:</div>
+      <div class="folder-path" title="Google Drive: 1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1">
+        Drive/Hop_Dong_MF14
+      </div>
+      <button class="btn-sidebar-sync" onclick="window.location.reload()">
+        <span>↻ Quét lại thư mục</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+  <main class="main-wrapper">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="data-status-meta">
+        <span class="status-indicator">
+          <span class="status-dot"></span>
+          <span>Dữ liệu thật</span>
+        </span>
+        <span>Quét lúc <strong>01:17:17 01/10/2026</strong></span>
+        <span>•</span>
+        <span>17 bảng từ 11 file (Google Sheets)</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn-pill-sync" onclick="window.location.reload()">
+          <span>↻ Quét lại thư mục</span>
+        </button>
+        <div class="user-profile-badge" id="btn-google-auth" title="Tài khoản Google đã kết nối">
+          <div class="user-avatar-circle" id="topbar-user-avatar">Hư</div>
+          <span id="topbar-user-name">Phạm Thế Hưng (Admin)</span>
+          <span style="font-size:10.5px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:10px; font-weight:600;">✓ Đã cấp quyền</span>
+        </div>
+        <button class="btn-logout-pill" id="btn-logout" title="Đăng xuất khỏi hệ thống">
+          <span>🚪 Đăng xuất</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div class="content-area">
+
+      <!-- ==================== VIEW 1: BẢNG ĐIỀU HÀNH ==================== -->
+      <section id="view-dashboard" class="view-page active">
+        <div class="page-header">
+          <h2 class="page-title">Bảng điều hành</h2>
+          <p class="page-subtitle">Số liệu tổng hợp tính đến ngày 01/10/2026</p>
+        </div>
+
+        <!-- 4 KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Nhân viên đang làm</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val">159</span>
+              <span class="kpi-unit">người</span>
+            </div>
+            <div class="kpi-subtext"><strong>157</strong> đang đi làm • <strong>2</strong> nghỉ thai sản</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Quỹ lương tháng</span>
+              <select class="kpi-select">
+                <option>09/2026</option>
+                <option>08/2026</option>
+              </select>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val">1,91</span>
+              <span class="kpi-unit">tỷ</span>
+            </div>
+            <div class="kpi-subtext">Thực lĩnh <strong>1,74 tỷ</strong> • <span style="color:#15803d; font-weight:600;">+0,6%</span> so với tháng trước</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Hợp đồng sắp hết hạn</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" style="color:#c2410c;">8</span>
+              <span class="kpi-unit">trong 30 ngày</span>
+            </div>
+            <div class="kpi-subtext">12 trong 60 ngày • <span class="kpi-link" onclick="document.querySelector('[data-target=\'view-employees\']').click()">Xem danh sách</span></div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Đơn nghỉ chờ duyệt</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" style="color:#0369a1;">12</span>
+              <span class="kpi-unit">đơn</span>
+            </div>
+            <div class="kpi-subtext">4 đơn nghỉ trong 7 ngày tới • <span class="kpi-link">Duyệt ngay</span></div>
+          </div>
+        </div>
+
+        <!-- 2 Charts Grid -->
+        <div class="charts-grid">
+          <!-- Biểu đồ nhân sự theo phòng ban -->
+          <div class="chart-card">
+            <h3 class="card-heading">Nhân sự theo phòng ban</h3>
+            <p class="card-subheading">So với định biên trong danh mục phòng ban</p>
+
+            <div class="dept-bars-list" id="dept-bars-container">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="dept-legend-row">
+              <div><span class="legend-dot" style="background:#2b5641;"></span> Đang đi làm</div>
+              <div><span class="legend-dot" style="background:#a7f3d0;"></span> Nghỉ thai sản</div>
+              <div><span class="legend-dot" style="background:#e2e8f0; border: 1px solid #94a3b8;"></span> Định biên</div>
+              <div class="badge-over-quota">Xưởng Sản xuất vượt định biên 1 người</div>
+            </div>
+          </div>
+
+          <!-- Biểu đồ quỹ lương theo tháng -->
+          <div class="chart-card">
+            <h3 class="card-heading">Quỹ lương theo tháng</h3>
+            <p class="card-subheading">Tổng thu nhập và thực lĩnh, đơn vị: tỷ đồng</p>
+
+            <div class="payroll-chart-container">
+              <div class="payroll-bars">
+                <!-- Tháng 06 -->
+                <div class="payroll-bar-group">
+                  <span class="bar-val-label">1,73</span>
+                  <div class="payroll-bar-stack">
+                    <div class="bar-total" style="height: 85%;"></div>
+                    <div class="bar-net" style="height: 75%;"></div>
+                  </div>
+                  <span class="bar-month-name">Tháng 06/2026</span>
+                </div>
+                <!-- Tháng 07 -->
+                <div class="payroll-bar-group">
+                  <span class="bar-val-label">1,76</span>
+                  <div class="payroll-bar-stack">
+                    <div class="bar-total" style="height: 88%;"></div>
+                    <div class="bar-net" style="height: 78%;"></div>
+                  </div>
+                  <span class="bar-month-name">Tháng 07/2026</span>
+                </div>
+                <!-- Tháng 08 -->
+                <div class="payroll-bar-group">
+                  <span class="bar-val-label">1,90</span>
+                  <div class="payroll-bar-stack">
+                    <div class="bar-total" style="height: 96%;"></div>
+                    <div class="bar-net" style="height: 86%;"></div>
+                  </div>
+                  <span class="bar-month-name">Tháng 08/2026</span>
+                </div>
+                <!-- Tháng 09 -->
+                <div class="payroll-bar-group">
+                  <span class="bar-val-label">1,91</span>
+                  <div class="payroll-bar-stack">
+                    <div class="bar-total" style="height: 98%;"></div>
+                    <div class="bar-net" style="height: 88%;"></div>
+                  </div>
+                  <span class="bar-month-name">Tháng 09/2026</span>
+                </div>
+              </div>
+
+              <div class="dept-legend-row">
+                <div><span class="legend-dot" style="background:#a7d0ba;"></span> Tổng thu nhập</div>
+                <div><span class="legend-dot" style="background:#254d38;"></span> Thực lĩnh (sau bảo hiểm, thuế, tạm ứng)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Việc cần xử lý gấp -->
+        <div class="urgent-tasks-card">
+          <div class="urgent-header-row">
+            <div>
+              <h3 class="card-heading">Việc cần xử lý gấp</h3>
+              <p class="card-subheading" style="margin-bottom:0;">Những việc đến hạn sớm nhất, đối chiếu từ nhiều file</p>
+            </div>
+            <a href="javascript:void(0)" class="kpi-link" onclick="document.querySelector('[data-target=\'view-tasks\']').click()">Xem tất cả 14 việc →</a>
+          </div>
+
+          <div id="urgent-tasks-container">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: VIỆC CẦN XỬ LÝ (CHUYÊN BIỆT) ==================== -->
+      <section id="view-tasks" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Việc cần xử lý</h2>
+          <p class="page-subtitle">14 sự vụ nhân sự cần duyệt và xử lý ngay theo thứ tự ưu tiên • Đối chiếu tự động từ các file dữ liệu</p>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="tasks-filter-pills">
+          <div class="task-pill active" data-task-filter="all">
+            <span>Tất cả</span>
+            <span class="task-pill-badge">14</span>
+          </div>
+          <div class="task-pill" data-task-filter="probation">
+            <span>⚠️ Thử việc sắp hết hạn</span>
+            <span class="task-pill-badge">3</span>
+          </div>
+          <div class="task-pill" data-task-filter="contract">
+            <span>📄 Hợp đồng sắp hết hạn</span>
+            <span class="task-pill-badge">8</span>
+          </div>
+          <div class="task-pill" data-task-filter="leave">
+            <span>📝 Đơn nghỉ chờ duyệt</span>
+            <span class="task-pill-badge">2</span>
+          </div>
+          <div class="task-pill" data-task-filter="quota">
+            <span>🚨 Vượt định biên</span>
+            <span class="task-pill-badge">1</span>
+          </div>
+        </div>
+
+        <!-- Full Task Items List -->
+        <div class="task-items-list" id="full-tasks-list">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 2: DANH SÁCH NHÂN VIÊN ==================== -->
+      <section id="view-employees" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Danh sách nhân viên</h2>
+          <p class="page-subtitle">Bấm vào tên để mở hồ sơ đầy đủ</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="emp-search-input" placeholder="Tên, Mã NV, số điện thoại">
+          </div>
+
+          <select class="select-filter" id="emp-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban Giám đốc">Ban Giám đốc</option>
+            <option value="Phòng Hành chính – Nhân sự">Phòng Hành chính – Nhân sự</option>
+            <option value="Phòng Kế toán">Phòng Kế toán</option>
+            <option value="Phòng Kinh doanh">Phòng Kinh doanh</option>
+            <option value="Phòng Kho vận">Phòng Kho vận</option>
+            <option value="Xưởng Sản xuất">Xưởng Sản xuất</option>
+            <option value="Phòng Quản lý chất lượng (QA/QC)">Phòng Quản lý chất lượng (QA/QC)</option>
+            <option value="Phòng Kỹ thuật – Bảo trì">Phòng Kỹ thuật – Bảo trì</option>
+          </select>
+        </div>
+
+        <div class="meta-note">
+          Cột có dấu ↗ được lấy từ file khác, nối qua Mã NV.
+        </div>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 120px;">Mã NV</th>
+                <th>Họ và tên</th>
+                <th>Phòng ban</th>
+                <th>Chức danh / Vị trí</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="employee-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 3: CHẤM CÔNG MA TRẬN ==================== -->
+      <section id="view-timesheet" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Chấm công</h2>
+          <p class="page-subtitle">Dữ liệu máy chấm công vân tay, đã đối chiếu đơn nghỉ phép • <span style="font-family:monospace; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Cham_cong_2026_09.xlsx</span> (Dữ liệu đến 28/09/2026)</p>
+        </div>
+
+        <div class="filter-bar">
+          <select class="select-filter">
+            <option>Tháng 09/2026</option>
+            <option>Tháng 08/2026</option>
+          </select>
+
+          <div class="search-input-box" style="max-width: 240px;">
+            <input type="text" placeholder="Tên hoặc Mã NV">
+          </div>
+
+          <select class="select-filter">
+            <option>Tất cả phòng ban</option>
+          </select>
+
+          <select class="select-filter">
+            <option>Tất cả ký hiệu</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 4px;">
+            <button class="btn-pill-sync">Tổng hợp</button>
+            <button class="btn-pill-sync" style="background:#1d7042; color:#fff; border-color:#1d7042;">Lưới theo ngày</button>
+            <button class="btn-pill-sync">Chi tiết</button>
+          </div>
+        </div>
+
+        <!-- 8 Indicator stats bar -->
+        <div class="timesheet-stats-bar">
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Số người</div>
+            <div class="ts-stat-val">159</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Số dòng</div>
+            <div class="ts-stat-val">3.857</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Ngày công (X + CT)</div>
+            <div class="ts-stat-val" style="color:#15803d;">3.425</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Nghỉ có phép (P, R, L)</div>
+            <div class="ts-stat-val">380</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Ốm, thai sản</div>
+            <div class="ts-stat-val" style="color:#b45309;">51</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Không lương, không phép</div>
+            <div class="ts-stat-val" style="color:#dc2626;">1</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Lượt đi muộn</div>
+            <div class="ts-stat-val" style="color:#b91c1c;">140</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Giờ tăng ca</div>
+            <div class="ts-stat-val" style="color:#2563eb;">3.250</div>
+          </div>
+        </div>
+
+        <!-- 30-Day Matrix Grid Table -->
+        <div class="matrix-table-wrap">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th class="col-name">Họ và tên</th>
+                <th>01</th><th>02</th><th>03</th><th>04</th><th style="color:#dc2626;">05</th><th style="color:#dc2626;">06</th><th>07</th><th>08</th><th>09</th><th>10</th><th>11</th><th style="color:#dc2626;">12</th><th style="color:#dc2626;">13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th style="color:#dc2626;">19</th><th style="color:#dc2626;">20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>25</th><th style="color:#dc2626;">26</th><th style="color:#dc2626;">27</th><th>28</th><th>29</th><th>30</th>
+              </tr>
+            </thead>
+            <tbody id="timesheet-matrix-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: HỢP ĐỒNG LAO ĐỘNG ==================== -->
+      <section id="view-contracts" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Hợp đồng lao động</h2>
+          <p class="page-subtitle">Theo dõi 159 hợp đồng lao động • Quản lý thời hạn và liên kết trực tiếp bản scan Google Drive</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="contract-search-input" placeholder="Tìm theo Mã NV, Họ tên, Số HĐ...">
+          </div>
+
+          <select class="select-filter" id="contract-type-filter">
+            <option value="">Tất cả loại HĐ</option>
+            <option value="Không xác định thời hạn">Không xác định thời hạn</option>
+            <option value="3 năm">Hợp đồng 3 năm</option>
+            <option value="1 năm">Hợp đồng 1 năm</option>
+            <option value="Thử việc">Thử việc</option>
+          </select>
+
+          <select class="select-filter" id="contract-status-filter">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đang hiệu lực">Đang hiệu lực</option>
+            <option value="Sắp hết hạn">Sắp hết hạn</option>
+          </select>
+
+          <div style="margin-left: auto;">
+            <a href="https://drive.google.com/drive/folders/1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1?usp=sharing" target="_blank" class="btn-pill-sync" style="background:#15803d; color:#fff; border-color:#15803d; text-decoration:none;">
+              📁 Mở thư mục Scan trên Drive
+            </a>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 90px;">Mã NV</th>
+                <th>Họ và tên</th>
+                <th>Phòng ban</th>
+                <th>Số hợp đồng</th>
+                <th>Loại hợp đồng</th>
+                <th>Ngày bắt đầu</th>
+                <th>Ngày kết thúc</th>
+                <th>Lương đóng BH</th>
+                <th>Bản scan Google Drive</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="contracts-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: NGHỈ PHÉP ==================== -->
+      <section id="view-leaves" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Quản lý Nghỉ phép</h2>
+          <p class="page-subtitle">Theo dõi đơn xin nghỉ phép, duyệt phép tự động và tổng hợp quỹ phép năm</p>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;">
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng đơn tháng này</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px;">42</span><span class="kpi-unit">đơn</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Chờ duyệt gấp</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#d97706;">12</span><span class="kpi-unit">đơn</span></div>
+            <div class="kpi-subtext" style="font-size:11px;">4 đơn nghỉ trong 7 ngày tới</div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Đã phê duyệt</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#15803d;">28</span><span class="kpi-unit">đơn</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Đã từ chối</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#dc2626;">2</span><span class="kpi-unit">đơn</span></div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="leave-search-input" placeholder="Tìm theo tên hoặc mã NV...">
+          </div>
+
+          <select class="select-filter" id="leave-status-filter">
+            <option value="">Tất cả trạng thái duyệt</option>
+            <option value="Chờ duyệt">Chờ duyệt</option>
+            <option value="Đã duyệt">Đã duyệt</option>
+            <option value="Từ chối">Từ chối</option>
+          </select>
+
+          <select class="select-filter" id="leave-type-filter">
+            <option value="">Tất cả loại phép</option>
+            <option value="Phép năm">Phép năm</option>
+            <option value="Việc riêng">Việc riêng</option>
+            <option value="Nghỉ ốm">Nghỉ ốm</option>
+            <option value="Thai sản">Thai sản</option>
+          </select>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mã đơn</th>
+                <th>Mã NV</th>
+                <th>Họ và tên</th>
+                <th>Phòng ban</th>
+                <th>Loại phép</th>
+                <th>Từ ngày</th>
+                <th>Đến ngày</th>
+                <th>Số ngày</th>
+                <th>Lý do</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="leaves-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: BẢNG LƯƠNG ==================== -->
+      <section id="view-payroll" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Bảng lương & Thu nhập</h2>
+          <p class="page-subtitle">Bảng tính lương tháng 09/2026 • Tự động tính theo ngày công, phụ cấp và các khoản giảm trừ</p>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;">
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng thu nhập toàn công ty</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px;">1,91</span><span class="kpi-unit">tỷ đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Thực lĩnh chuyển khoản</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#15803d;">1,74</span><span class="kpi-unit">tỷ đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng nộp BHXH (10.5%)</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#dc2626;">98,4</span><span class="kpi-unit">triệu đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng khấu trừ Thuế TNCN</span>
+            <div class="kpi-val-row"><span class="kpi-val" style="font-size:22px; color:#2563eb;">42,1</span><span class="kpi-unit">triệu đ</span></div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <select class="select-filter">
+            <option>Tháng 09/2026</option>
+            <option>Tháng 08/2026</option>
+          </select>
+
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="payroll-search-input" placeholder="Tìm theo tên hoặc mã NV...">
+          </div>
+
+          <select class="select-filter" id="payroll-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban Giám đốc">Ban Giám đốc</option>
+            <option value="Phòng Hành chính – Nhân sự">Phòng Hành chính – Nhân sự</option>
+            <option value="Phòng Kế toán">Phòng Kế toán</option>
+            <option value="Phòng Kinh doanh">Phòng Kinh doanh</option>
+            <option value="Phòng Kho vận">Phòng Kho vận</option>
+            <option value="Xưởng Sản xuất">Xưởng Sản xuất</option>
+            <option value="Phòng Quản lý chất lượng (QA/QC)">Phòng Quản lý chất lượng (QA/QC)</option>
+            <option value="Phòng Kỹ thuật – Bảo trì">Phòng Kỹ thuật – Bảo trì</option>
+          </select>
+
+          <div style="margin-left: auto;">
+            <button class="btn-pill-sync" onclick="alert('Đang kết xuất phiếu lương PDF hàng loạt cho 159 nhân viên...')">
+              📄 Xuất phiếu lương PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mã NV</th>
+                <th>Họ và tên</th>
+                <th>Phòng ban</th>
+                <th>Lương cơ bản</th>
+                <th>Công thực tế</th>
+                <th>Phụ cấp</th>
+                <th>Tăng ca</th>
+                <th>Tổng thu nhập</th>
+                <th>BHXH (10.5%)</th>
+                <th>Thuế TNCN</th>
+                <th>Thực lĩnh</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="payroll-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 4: CÀI ĐẶT & GOOGLE CLOUD ==================== -->
+      <section id="view-setup" class="view-page">
+        <div class="setup-hero">
+          <h2>Cấu hình Kết nối Google Sheets & Google Drive</h2>
+          <p>
+            Hệ thống đang được liên kết an toàn tới Bảng tính và Thư mục Drive của Công ty cổ phần MF14. Bạn không cần chia sẻ quyền chỉnh sửa công khai (Public Editable) để bảo vệ bí mật lương và thông tin nhân viên.
+          </p>
+        </div>
+
+        <div class="setup-grid">
+          <div class="config-box">
+            <h3 class="card-heading" style="margin-bottom: 12px;">📊 Thông tin Tài nguyên Google</h3>
+            <div class="field-item" style="margin-bottom: 12px;">
+              <span class="field-label">Google Spreadsheet ID:</span>
+              <a href="https://docs.google.com/spreadsheets/d/1g-5OPngL2RuGu44C0kbmzP7d9p28UsUy0KZ4t5pny9I/edit?usp=sharing" target="_blank" class="field-value" style="color:#0f766e; word-break:break-all;">
+                1g-5OPngL2RuGu44C0kbmzP7d9p28UsUy0KZ4t5pny9I ↗
+              </a>
+            </div>
+
+            <div class="field-item" style="margin-bottom: 16px;">
+              <span class="field-label">Thư mục Hợp đồng Google Drive ID:</span>
+              <a href="https://drive.google.com/drive/folders/1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1?usp=sharing" target="_blank" class="field-value" style="color:#0f766e; word-break:break-all;">
+                1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1 ↗
+              </a>
+            </div>
+
+            <div class="field-item" style="margin-bottom: 16px;">
+              <span class="field-label">Đường dẫn Google Apps Script Web App (Tùy chọn kết nối trực tiếp):</span>
+              <input type="text" id="input-apps-script-url" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; margin-top:4px;">
+            </div>
+
+            <button class="btn-primary-green" id="btn-auto-init-sheet" style="width: 100%; justify-content: center;">
+              🚀 Tự động khởi tạo dữ liệu vào Google Sheet
+            </button>
+          </div>
+
+          <div class="config-box">
+            <h3 class="card-heading" style="margin-bottom: 12px;">📖 3 Bước kết nối tự động (Chỉ làm 1 lần)</h3>
+            <ol style="font-size: 13px; color: #475569; line-height: 1.8; padding-left: 20px;">
+              <li>Mở file Google Sheet của bạn, vào menu <strong>Tiện ích mở rộng > Apps Script</strong>.</li>
+              <li>Bấm nút <strong>"📋 Sao chép mã vào Clipboard"</strong> bên dưới rồi dán đè vào Apps Script.</li>
+              <li>Bấm <strong>Triển khai (Deploy) > Tùy chọn triển khai mới (New Deployment)</strong>:
+                <br>• Loại: <em>Ứng dụng web (Web app)</em>
+                <br>• Thực thi dưới dạng: <em>Tôi (Me)</em>
+                <br>• Ai có quyền truy cập: <em>Bất kỳ ai (Anyone)</em>
+              </li>
+              <li>Dán link Web App URL vào ô bên cạnh rồi bấm <strong>"Khởi tạo dữ liệu"</strong> là xong!</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- CODE VIEWER VÀ NÚT COPY CLIPBOARD -->
+        <div class="code-viewer-container">
+          <div class="code-viewer-header">
+            <div class="code-file-title">
+              <span>📄 google-apps-script.js (Mã nguồn triển khai vào Google Sheet)</span>
+            </div>
+            <button class="btn-copy-code" id="btn-copy-script">
+              <span>📋 Sao chép mã vào Clipboard</span>
+            </button>
+          </div>
+          <div class="code-viewer-body">
+            <pre id="gas-code-content">Đang tải mã nguồn google-apps-script.js...</pre>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== SLIDE-OVER DRAWER (HỒ SƠ CHI TIẾT) ==================== -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <aside class="drawer-panel" id="emp-drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <div class="drawer-avatar" id="d-avatar">Hư</div>
+        <div class="drawer-user-info">
+          <h2 id="d-name">Phạm Thế Hưng</h2>
+          <div class="drawer-subinfo">
+            <span id="d-subtitle">TP0001 · Giám đốc · Ban Giám đốc</span>
+            <span class="badge-status badge-active" id="d-status-pill">Đang làm việc</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-drawer-close" id="btn-close-drawer">Đóng</button>
+    </div>
+
+    <!-- 5 Tabs -->
+    <div class="drawer-tabs">
+      <div class="drawer-tab active" data-pane="tab-personal">Thông tin cá nhân</div>
+      <div class="drawer-tab" data-pane="tab-contract">Hợp đồng</div>
+      <div class="drawer-tab" data-pane="tab-salary">Lương</div>
+      <div class="drawer-tab" data-pane="tab-leave">Nghỉ phép</div>
+      <div class="drawer-tab" data-pane="tab-timesheet">Chấm công</div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- PANE 1: THÔNG TIN CÁ NHÂN -->
+      <div class="drawer-content-pane active" id="tab-personal">
+        <!-- Thông tin cá nhân -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Thông tin cá nhân</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Mã NV</span>
+              <span class="field-value" id="f-code">TP0001</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Họ và tên</span>
+              <span class="field-value" id="f-name">Phạm Thế Hưng</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Giới tính</span>
+              <span class="field-value" id="f-gender">Nam</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày sinh</span>
+              <span class="field-value" id="f-dob">29/05/1971</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Dân tộc</span>
+              <span class="field-value" id="f-ethnicity">Kinh</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Quê quán</span>
+              <span class="field-value" id="f-hometown">Ninh Bình</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số CCCD/Mã số thuế</span>
+              <span class="field-value" id="f-idcard">036071391626</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày cấp CCCD</span>
+              <span class="field-value" id="f-iddate">06/08/2024</span>
+            </div>
+            <div class="field-item" style="grid-column: span 2;">
+              <span class="field-label">Địa chỉ thường trú</span>
+              <span class="field-value" id="f-address">Tổ dân phố 7, xã Yên Mỹ, tỉnh Hưng Yên</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số điện thoại</span>
+              <span class="field-value" id="f-phone">0333226583</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Email công ty</span>
+              <span class="field-value" id="f-email" style="color:#0f766e;">hung.pt@mf14.vn</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Trình độ</span>
+              <span class="field-value" id="f-edu">Thạc sĩ</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Tình trạng hôn nhân</span>
+              <span class="field-value" id="f-marital">Đã kết hôn</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số người phụ thuộc</span>
+              <span class="field-value" id="f-dependents">2</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Công việc -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Công việc</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Phòng ban</span>
+              <span class="field-value" id="f-dept">Ban Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Chức vụ</span>
+              <span class="field-value" id="f-position">Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Chức danh công việc</span>
+              <span class="field-value" id="f-jobtitle">Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Tổ/Ca</span>
+              <span class="field-value field-value-empty" id="f-shift">–</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày vào làm</span>
+              <span class="field-value" id="f-startdate">01/03/2012</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Trạng thái</span>
+              <span class="badge-status badge-active">Đang làm việc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày nghỉ việc</span>
+              <span class="field-value field-value-empty" id="f-leavedate">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bảo hiểm và Ngân hàng -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Bảo hiểm và Ngân hàng</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Số sổ BHXH</span>
+              <span class="field-value" id="f-insurance">3614969667</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngân hàng</span>
+              <span class="field-value" id="f-bank">BIDV – CN Phố Nối</span>
+            </div>
+            <div class="field-item" style="grid-column: span 2;">
+              <span class="field-label">Số tài khoản</span>
+              <span class="field-value" id="f-bankacc">844829998799</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 2: HỢP ĐỒNG & DRIVE SCAN -->
+      <div class="drawer-content-pane" id="tab-contract">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Chi tiết hợp đồng lao động & Tệp đính kèm</div>
+          <div id="d-contract-content">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 3: LƯƠNG -->
+      <div class="drawer-content-pane" id="tab-salary">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Bảng tính lương tháng gần nhất (09/2026)</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Lương cơ bản</span>
+              <span class="field-value">45.000.000 đ</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Phụ cấp chức vụ</span>
+              <span class="field-value">5.000.000 đ</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Trừ BHXH (10.5%)</span>
+              <span class="field-value" style="color:#dc2626;">-3.129.000 đ</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Thực lĩnh</span>
+              <span class="field-value" style="color:#15803d; font-size:16px;">43.871.000 đ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 4: NGHỈ PHÉP -->
+      <div class="drawer-content-pane" id="tab-leave">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Quỹ phép năm 2026</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Tổng phép năm</span>
+              <span class="field-value">14 ngày</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Đã nghỉ</span>
+              <span class="field-value">3 ngày</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Còn lại</span>
+              <span class="field-value" style="color:#15803d; font-size:16px;">11 ngày</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 5: CHẤM CÔNG -->
+      <div class="drawer-content-pane" id="tab-timesheet">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Công thực tế tháng 09/2026</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Ngày công thực tế</span>
+              <span class="field-value">22 / 22 ngày</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Lượt đi muộn</span>
+              <span class="field-value" style="color:#dc2626;">2 lần</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Biến môi trường & cấu hình Google Client ID -->
+  <script src="config.js"></script>
+  <!-- Script logic -->
+  <script src="app.js"></script>
+</body>
+</html>
