@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhân sự MF14 - Công ty cổ phần MF14 | HRM Cloud</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2315803d'/><text x='50' y='68' font-size='50' font-weight='bold' fill='white' text-anchor='middle'>MF</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Thư viện Firebase SDK v10 (Compat) cho Cloud Firestore & Cloud Storage -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <!-- Thư viện SheetJS xuất báo cáo Excel (.xlsx) chuẩn -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Thư viện Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- ==================== CỔNG ĐĂNG NHẬP HỆ THỐNG HRM MF14 ==================== -->
+  <div class="login-screen-overlay" id="login-screen">
+    <div class="login-card" style="max-width: 440px;">
+      <div class="login-logo">MF</div>
+      <h2 class="login-title">Công ty cổ phần MF14</h2>
+      <p class="login-subtitle">Hệ thống Quản trị Nhân sự & Tiền lương (HRM Cloud)</p>
+
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-bottom: 18px; text-align: left; font-size: 12px; color: #1e40af;">
+        🔥 <strong>Dữ liệu đám mây:</strong> Đã chuyển đổi sang <strong>Firebase Cloud Realtime</strong>. Tự động đồng bộ 30 nhân sự và 164 bảng lương lịch sử.
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="button" class="btn-primary-green" id="btn-admin-bypass" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px; font-weight: 700; background: #15803d; border-radius: 8px; box-shadow: 0 4px 12px rgba(21,128,61,0.25);">
+          🚀 Đăng nhập vào Hệ thống (Quản trị viên)
+        </button>
+
+        <button class="btn-google-sign-in" id="btn-login-google" style="width: 100%; justify-content: center; border-radius: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.41l4.02-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"/></svg>
+          <span id="txt-login-btn">Đăng nhập bằng tài khoản Google</span>
+        </button>
+      </div>
+
+      <div style="margin-top: 16px; font-size: 11.5px; color: #64748b;">
+        * Dữ liệu bảo mật nội bộ Công ty Cổ phần MF14.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-badge">MF</div>
+      <div class="company-info">
+        <h1>Nhân sự MF14</h1>
+        <p>Công ty cổ phần MF14</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Tổng quan</div>
+      <div class="nav-item active" data-target="view-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Bảng điều hành</span>
+      </div>
+      <div class="nav-item" data-target="view-tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Việc cần xử lý</span>
+        <span class="nav-badge">14</span>
+      </div>
+
+      <div class="nav-section-title">Dữ liệu nhân sự</div>
+      <div class="nav-item" data-target="view-employees">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Nhân viên</span>
+      </div>
+      <div class="nav-item" data-target="view-contracts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Hợp đồng</span>
+      </div>
+      <div class="nav-item" data-target="view-timesheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Chấm công</span>
+      </div>
+      <div class="nav-item" data-target="view-leaves">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span>Nghỉ phép</span>
+      </div>
+      <div class="nav-item" data-target="view-payroll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span>Bảng lương</span>
+      </div>
+
+      <div class="nav-section-title">Hệ thống</div>
+      <div class="nav-item" data-target="view-setup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Kết nối Google Sheets & Drive</span>
+      </div>
+      <div class="nav-item" data-target="view-setup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Cài đặt</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div>Hôm nay: <strong>01/10/2026</strong></div>
+      <div style="margin-top: 4px; font-size:11px;">Thư mục dữ liệu:</div>
+      <div class="folder-path" title="Google Drive: 1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1">
+        Drive/Hop_Dong_MF14
+      </div>
+      <button class="btn-sidebar-sync" onclick="forceSyncFromExcel()">
+        <span>↻ Quét lại thư mục</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+  <main class="main-wrapper">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="data-status-meta">
+        <span class="status-indicator">
+          <span class="status-dot"></span>
+          <span id="topbar-firebase-status">🔥 Firebase Cloud: Sẵn sàng</span>
+        </span>
+        <span>•</span>
+        <span>30 nhân sự MF14 (MS01 - MS30)</span>
+        <span>•</span>
+        <span>164 bảng lương lịch sử (10/2025 - 09/2026)</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn-action-primary" id="btn-topbar-sync-firebase" onclick="syncAllLocalDataToFirestore()" style="background:#ea580c; border-color:#ea580c;" title="Đồng bộ 2 chiều dữ liệu vào Firebase Cloud Firestore">
+          <span>🔥 Đồng bộ Firebase Cloud</span>
+        </button>
+        <button class="btn-action-primary" id="btn-export-excel" onclick="exportAllDataToExcel()" style="background:#16a34a; border-color:#16a34a;" title="Tải xuống tệp Excel đầy đủ dữ liệu cho kế toán">
+          <span>📥 Xuất Excel (.xlsx)</span>
+        </button>
+        <a href="https://docs.google.com/spreadsheets/d/1g-5OPngL2RuGu44C0kbmzP7d9p28UsUy0KZ4t5pny9I/edit?usp=sharing" target="_blank" class="btn-action-outline" style="text-decoration:none;" title="Mở file Google Sheet trực tiếp để xem dữ liệu">
+          <span>📊 Google Sheet ↗</span>
+        </a>
+        <div class="user-profile-badge" id="btn-google-auth" title="Tài khoản quản trị">
+          <div class="user-avatar-circle" id="topbar-user-avatar">AD</div>
+          <span id="topbar-user-name">Quản trị viên MF14</span>
+          <span style="font-size:10.5px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:10px; font-weight:600;" id="topbar-sheet-status">✓ Cloud Active</span>
+        </div>
+        <button class="btn-logout-pill" id="btn-logout" title="Đăng xuất khỏi hệ thống">
+          <span>🚪 Đăng xuất</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div class="content-area">
+
+      <!-- ==================== VIEW 1: BẢNG ĐIỀU HÀNH ==================== -->
+      <section id="view-dashboard" class="view-page active">
+        <div class="page-header">
+          <h2 class="page-title">Bảng điều hành</h2>
+          <p class="page-subtitle">Số liệu tổng hợp tính đến ngày 01/10/2026</p>
+        </div>
+
+        <!-- 4 KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Nhân viên đang làm</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" id="kpi-total-emp">37</span>
+              <span class="kpi-unit">người</span>
+            </div>
+            <div class="kpi-subtext" id="kpi-emp-subtext"><strong>37</strong> đang đi làm • <strong>0</strong> nghỉ việc</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Quỹ lương tháng</span>
+              <select class="kpi-select" id="kpi-payroll-month">
+                <option>10/2026</option>
+                <option>09/2026</option>
+              </select>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" id="kpi-payroll-val">433</span>
+              <span class="kpi-unit" id="kpi-payroll-unit">triệu đ</span>
+            </div>
+            <div class="kpi-subtext" id="kpi-payroll-subtext">Thực lĩnh: <strong id="kpi-payroll-net">412 triệu đ</strong></div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Hợp đồng sắp hết hạn</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" id="kpi-contracts-expiring" style="color:#c2410c;">7</span>
+              <span class="kpi-unit">trong 30 ngày</span>
+            </div>
+            <div class="kpi-subtext">11 trong 60 ngày • <span class="kpi-link" onclick="document.querySelector('[data-target=\'view-contracts\']').click()">Xem danh sách</span></div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title-row">
+              <span class="kpi-label">Đơn nghỉ chờ duyệt</span>
+            </div>
+            <div class="kpi-val-row">
+              <span class="kpi-val" id="kpi-pending-leaves" style="color:#0369a1;">3</span>
+              <span class="kpi-unit">đơn</span>
+            </div>
+            <div class="kpi-subtext">2 đơn nghỉ trong 7 ngày tới • <span class="kpi-link" onclick="document.querySelector('[data-target=\'view-leaves\']').click()">Duyệt ngay</span></div>
+          </div>
+        </div>
+
+        <!-- 2 Charts Grid -->
+        <div class="charts-grid">
+          <!-- Biểu đồ nhân sự theo phòng ban -->
+          <div class="chart-card">
+            <h3 class="card-heading">Nhân sự theo phòng ban</h3>
+            <p class="card-subheading">So với định biên trong danh mục phòng ban</p>
+
+            <div class="dept-bars-list" id="dept-bars-container">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="dept-legend-row">
+              <div><span class="legend-dot" style="background:#2b5641;"></span> Đang đi làm</div>
+              <div><span class="legend-dot" style="background:#e2e8f0; border: 1px solid #94a3b8;"></span> Định biên</div>
+              <div class="badge-over-quota" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;">✓ Tất cả phòng ban đúng định biên</div>
+            </div>
+          </div>
+
+          <!-- Biểu đồ quỹ lương theo tháng -->
+          <div class="chart-card">
+            <h3 class="card-heading">Quỹ lương theo tháng</h3>
+            <p class="card-subheading">Tổng thu nhập Gross và thực lĩnh Net, đơn vị: tỷ đồng (Chuẩn hóa MF14)</p>
+
+            <div class="payroll-chart-container">
+              <div class="payroll-bars" id="payroll-bars-container">
+                <!-- Rendered dynamically via JS -->
+              </div>
+
+              <div class="dept-legend-row">
+                <div><span class="legend-dot" style="background:#a7d0ba;"></span> Tổng thu nhập (Gross)</div>
+                <div><span class="legend-dot" style="background:#254d38;"></span> Thực lĩnh (Net)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Việc cần xử lý gấp -->
+        <div class="urgent-tasks-card">
+          <div class="urgent-header-row">
+            <div>
+              <h3 class="card-heading">Việc cần xử lý gấp</h3>
+              <p class="card-subheading" style="margin-bottom:0;">Những việc đến hạn sớm nhất, đối chiếu từ nhiều file</p>
+            </div>
+            <a href="javascript:void(0)" class="kpi-link" onclick="document.querySelector('[data-target=\'view-tasks\']').click()">Xem tất cả 14 việc →</a>
+          </div>
+
+          <div id="urgent-tasks-container">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: VIỆC CẦN XỬ LÝ (CHUYÊN BIỆT) ==================== -->
+      <section id="view-tasks" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Việc cần xử lý</h2>
+          <p class="page-subtitle">14 sự vụ nhân sự cần duyệt và xử lý ngay theo thứ tự ưu tiên • Đối chiếu tự động từ các file dữ liệu</p>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="tasks-filter-pills">
+          <div class="task-pill active" data-task-filter="all">
+            <span>Tất cả</span>
+            <span class="task-pill-badge">14</span>
+          </div>
+          <div class="task-pill" data-task-filter="probation">
+            <span>⚠️ Thử việc sắp hết hạn</span>
+            <span class="task-pill-badge">3</span>
+          </div>
+          <div class="task-pill" data-task-filter="contract">
+            <span>📄 Hợp đồng sắp hết hạn</span>
+            <span class="task-pill-badge">8</span>
+          </div>
+          <div class="task-pill" data-task-filter="leave">
+            <span>📝 Đơn nghỉ chờ duyệt</span>
+            <span class="task-pill-badge">2</span>
+          </div>
+          <div class="task-pill" data-task-filter="quota">
+            <span>🚨 Vượt định biên</span>
+            <span class="task-pill-badge">1</span>
+          </div>
+        </div>
+
+        <!-- Full Task Items List -->
+        <div class="task-items-list" id="full-tasks-list">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 2: DANH SÁCH NHÂN VIÊN ==================== -->
+      <section id="view-employees" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Danh sách nhân viên</h2>
+          <p class="page-subtitle">Bấm vào tên để mở hồ sơ đầy đủ</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="emp-search-input" placeholder="Tên, Mã NV, số điện thoại, CCCD...">
+          </div>
+
+          <select class="select-filter" id="emp-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban giám hiệu">Ban giám hiệu</option>
+            <option value="Vận hành">Vận hành</option>
+            <option value="Giáo viên">Giáo viên</option>
+          </select>
+
+          <select class="select-filter" id="emp-status-filter">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đang làm việc">Đang làm việc</option>
+            <option value="Đã nghỉ việc">Đã nghỉ việc</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn-action-primary" id="btn-open-add-emp">
+              <span>➕ Thêm nhân viên</span>
+            </button>
+            <button class="btn-action-outline" id="btn-export-emp">
+              <span>📥 Xuất Excel (CSV)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="meta-note">
+          Cột có dấu ↗ được lấy từ file khác, nối qua Mã NV.
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="emp-data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="id" style="width: 80px;">Mã NV</th>
+                <th class="sortable" data-col="name">Họ và tên</th>
+                <th class="sortable" data-col="dept">Phòng ban</th>
+                <th class="sortable" data-col="position">Chức danh</th>
+                <th class="sortable" data-col="phone">Số điện thoại</th>
+                <th class="sortable" data-col="dob">Ngày sinh</th>
+                <th class="sortable" data-col="idCard">CCCD</th>
+                <th class="sortable" data-col="address">Địa chỉ / HKTT</th>
+                <th class="sortable" data-col="gross" style="text-align:right;">Lương Gross</th>
+                <th class="sortable" data-col="net" style="text-align:right;">Thực lĩnh Net</th>
+                <th class="sortable" data-col="tv">HĐ Thử việc</th>
+                <th class="sortable" data-col="ct">HĐ Chính thức</th>
+                <th class="sortable" data-col="status">Kế toán check / Ghi chú</th>
+                <th style="width: 120px; text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="employee-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 3: CHẤM CÔNG MA TRẬN ==================== -->
+      <section id="view-timesheet" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Chấm công</h2>
+          <p class="page-subtitle">Dữ liệu chấm công 37 nhân sự MF14 • Tháng 10/2026</p>
+        </div>
+
+        <div class="filter-bar">
+          <select class="select-filter">
+            <option>Tháng 10/2026</option>
+            <option>Tháng 09/2026</option>
+          </select>
+
+          <div class="search-input-box" style="max-width: 240px;">
+            <input type="text" id="ts-search-input" placeholder="Tên hoặc Mã NV...">
+          </div>
+
+          <select class="select-filter" id="ts-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban giám hiệu">Ban giám hiệu</option>
+            <option value="Vận hành">Vận hành</option>
+            <option value="Giáo viên">Giáo viên</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 4px;">
+            <button class="btn-pill-sync" style="background:#1d7042; color:#fff; border-color:#1d7042;">Lưới theo ngày (30 ngày)</button>
+          </div>
+        </div>
+
+        <!-- Indicator stats bar MF14 chuẩn xác -->
+        <div class="timesheet-stats-bar">
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Số nhân sự</div>
+            <div class="ts-stat-val" id="ts-stat-count">37</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Ngày công chuẩn (22 ngày/người)</div>
+            <div class="ts-stat-val" style="color:#15803d;" id="ts-stat-workdays">814</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Nghỉ phép</div>
+            <div class="ts-stat-val" id="ts-stat-leaves">0</div>
+          </div>
+          <div class="ts-stat-card">
+            <div class="ts-stat-label">Lượt đi muộn</div>
+            <div class="ts-stat-val" style="color:#b91c1c;" id="ts-stat-late">0</div>
+          </div>
+        </div>
+
+        <!-- 30-Day Matrix Grid Table -->
+        <div class="matrix-table-wrap">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th class="col-name">Họ và tên</th>
+                <th>01</th><th>02</th><th>03</th><th>04</th><th style="color:#dc2626;">05</th><th style="color:#dc2626;">06</th><th>07</th><th>08</th><th>09</th><th>10</th><th>11</th><th style="color:#dc2626;">12</th><th style="color:#dc2626;">13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th style="color:#dc2626;">19</th><th style="color:#dc2626;">20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>25</th><th style="color:#dc2626;">26</th><th style="color:#dc2626;">27</th><th>28</th><th>29</th><th>30</th>
+              </tr>
+            </thead>
+            <tbody id="timesheet-matrix-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: HỢP ĐỒNG LAO ĐỘNG ==================== -->
+      <section id="view-contracts" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Hợp đồng lao động</h2>
+          <p class="page-subtitle">Theo dõi 37 hợp đồng lao động MF14 • Quản lý thời hạn và liên kết trực tiếp bản scan Google Drive</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="contract-search-input" placeholder="Tìm theo Mã NV, Họ tên, Số HĐ...">
+          </div>
+
+          <select class="select-filter" id="contract-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban giám hiệu">Ban giám hiệu</option>
+            <option value="Vận hành">Vận hành</option>
+            <option value="Giáo viên">Giáo viên</option>
+          </select>
+
+          <select class="select-filter" id="contract-type-filter">
+            <option value="">Tất cả loại HĐ</option>
+            <option value="Hợp đồng lao động 1 năm">Hợp đồng lao động 1 năm</option>
+            <option value="Thử việc">Thử việc</option>
+            <option value="Thư mời làm việc">Thư mời làm việc</option>
+          </select>
+
+          <select class="select-filter" id="contract-status-filter">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đang hiệu lực">Đang hiệu lực</option>
+            <option value="Sắp hết hạn">Sắp hết hạn</option>
+            <option value="Chưa ký HĐ">Chưa ký HĐ</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn-action-primary" id="btn-open-add-contract">
+              <span>➕ Thêm HĐ</span>
+            </button>
+            <button class="btn-action-outline" id="btn-export-contract">
+              <span>📥 Xuất Excel</span>
+            </button>
+            <a href="https://drive.google.com/drive/folders/1N2_STeZOdgR9_ka_xjZJdoEQhgUWlzX1?usp=sharing" target="_blank" class="btn-pill-sync" style="background:#15803d; color:#fff; border-color:#15803d; text-decoration:none;">
+              📁 Drive
+            </a>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="contracts-data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="empId" style="width: 80px;">Mã NV</th>
+                <th class="sortable" data-col="name">Họ và tên</th>
+                <th class="sortable" data-col="dept">Phòng ban</th>
+                <th class="sortable" data-col="position">Chức danh</th>
+                <th class="sortable" data-col="tvNumber">Số HĐ Thử việc</th>
+                <th class="sortable" data-col="tvPeriod">Thời hạn Thử việc</th>
+                <th class="sortable" data-col="tvDaysLeft">Hạn TV còn lại</th>
+                <th class="sortable" data-col="ctNumber">Số HĐ Chính thức</th>
+                <th class="sortable" data-col="ctPeriod">Thời hạn HĐCT</th>
+                <th class="sortable" data-col="ctDaysLeft">Hạn CT còn lại</th>
+                <th class="sortable" data-col="status">Kế toán check / Trạng thái</th>
+                <th class="sortable" data-col="note">Ghi chú</th>
+                <th style="width: 90px; text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="contracts-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: NGHỈ PHÉP ==================== -->
+      <section id="view-leaves" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Quản lý Nghỉ phép</h2>
+          <p class="page-subtitle">Theo dõi đơn xin nghỉ phép, duyệt phép tự động và tổng hợp quỹ phép năm</p>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;">
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng đơn tháng này</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="leave-kpi-total" style="font-size:22px;">4</span><span class="kpi-unit">đơn</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Chờ duyệt gấp</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="leave-kpi-pending" style="font-size:22px; color:#d97706;">3</span><span class="kpi-unit">đơn</span></div>
+            <div class="kpi-subtext" style="font-size:11px;">Cần xử lý phê duyệt</div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Đã phê duyệt</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="leave-kpi-approved" style="font-size:22px; color:#15803d;">1</span><span class="kpi-unit">đơn</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Đã từ chối</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="leave-kpi-rejected" style="font-size:22px; color:#dc2626;">0</span><span class="kpi-unit">đơn</span></div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="leave-search-input" placeholder="Tìm theo tên hoặc mã NV...">
+          </div>
+
+          <select class="select-filter" id="leave-status-filter">
+            <option value="">Tất cả trạng thái duyệt</option>
+            <option value="Chờ duyệt">Chờ duyệt</option>
+            <option value="Đã duyệt">Đã duyệt</option>
+            <option value="Từ chối">Từ chối</option>
+          </select>
+
+          <select class="select-filter" id="leave-type-filter">
+            <option value="">Tất cả loại phép</option>
+            <option value="Phép năm">Phép năm</option>
+            <option value="Việc riêng">Việc riêng</option>
+            <option value="Nghỉ ốm">Nghỉ ốm</option>
+            <option value="Thai sản">Thai sản</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn-action-primary" id="btn-open-add-leave">
+              <span>➕ Tạo đơn nghỉ phép</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="leaves-data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="id">Mã đơn</th>
+                <th class="sortable" data-col="empId">Mã NV</th>
+                <th class="sortable" data-col="name">Họ và tên</th>
+                <th class="sortable" data-col="dept">Phòng ban</th>
+                <th class="sortable" data-col="type">Loại phép</th>
+                <th class="sortable" data-col="startDate">Từ ngày</th>
+                <th class="sortable" data-col="endDate">Đến ngày</th>
+                <th class="sortable" data-col="days" style="text-align:right;">Số ngày</th>
+                <th class="sortable" data-col="reason">Lý do</th>
+                <th class="sortable" data-col="status">Trạng thái</th>
+                <th style="text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="leaves-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: BẢNG LƯƠNG ==================== -->
+      <section id="view-payroll" class="view-page">
+        <div class="page-header">
+          <h2 class="page-title">Bảng lương & Thu nhập</h2>
+          <p class="page-subtitle">Bảng tính lương tháng 10/2026 • Chuẩn hóa 37 nhân sự MF14 từ DANH SÁCH NHÂN VIÊN MS14_new.xlsx</p>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;">
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng thu nhập toàn công ty (Gross)</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="payroll-kpi-gross" style="font-size:22px;">433</span><span class="kpi-unit" id="payroll-kpi-gross-unit">triệu đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Thực lĩnh chuyển khoản (Net)</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="payroll-kpi-net" style="font-size:22px; color:#15803d;">412</span><span class="kpi-unit" id="payroll-kpi-net-unit">triệu đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng nộp BHXH (10.5% NLĐ)</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="payroll-kpi-bhxh" style="font-size:22px; color:#dc2626;">20,6</span><span class="kpi-unit" id="payroll-kpi-bhxh-unit">triệu đ</span></div>
+          </div>
+          <div class="kpi-card" style="min-height:90px; padding:14px 16px;">
+            <span class="kpi-label">Tổng mức đóng BHXH cơ sở</span>
+            <div class="kpi-val-row"><span class="kpi-val" id="payroll-kpi-base" style="font-size:22px; color:#2563eb;">195,8</span><span class="kpi-unit" id="payroll-kpi-base-unit">triệu đ</span></div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <select class="select-filter">
+            <option>Tháng 09/2026</option>
+            <option>Tháng 08/2026</option>
+          </select>
+
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="payroll-search-input" placeholder="Tìm theo tên hoặc mã NV...">
+          </div>
+
+          <select class="select-filter" id="payroll-dept-filter">
+            <option value="">Tất cả phòng ban</option>
+            <option value="Ban giám hiệu">Ban giám hiệu</option>
+            <option value="Vận hành">Vận hành</option>
+            <option value="Giáo viên">Giáo viên</option>
+          </select>
+
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn-action-outline" id="btn-export-payroll">
+              <span>📥 Xuất bảng lương (CSV)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table" id="payroll-data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="empId" style="width: 80px;">Mã NV</th>
+                <th class="sortable" data-col="name">Họ và tên</th>
+                <th class="sortable" data-col="dept">Phòng ban</th>
+                <th class="sortable" data-col="position">Chức danh</th>
+                <th class="sortable" data-col="gross" style="text-align:right;">Lương Gross</th>
+                <th class="sortable" data-col="probation" style="text-align:right;">Lương thử việc</th>
+                <th class="sortable" data-col="bhxhBase" style="text-align:right;">Lương đóng BHXH</th>
+                <th class="sortable" data-col="bhxh105" style="text-align:right;">10.5% BHXH trừ lương</th>
+                <th class="sortable" data-col="net" style="text-align:right;">Thực lĩnh Net</th>
+                <th style="text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="payroll-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 4: CÀI ĐẶT & CLOUD DATABASE ==================== -->
+      <section id="view-setup" class="view-page">
+        <div class="setup-hero">
+          <h2>Cấu hình Firebase Cloud Realtime Database (100% Tự Động 2 Chiều)</h2>
+          <p>
+            Hệ thống quản lý dữ liệu 100% thời gian thực qua <strong>Firebase Cloud Firestore</strong>. Toàn bộ thao tác thêm, sửa nhân viên, lịch sử lương và upload hợp đồng scan đều được lưu trữ trực tiếp trên đám mây tự động, không còn phụ thuộc vào Google Sheets.
+          </p>
+        </div>
+
+        <div class="setup-grid">
+          <!-- HỘP 1: CẤU HÌNH FIREBASE CLOUD -->
+          <div class="config-box" style="border-top: 4px solid #ea580c;">
+            <h3 class="card-heading" style="margin-bottom: 8px; color: #ea580c;">🔥 Cấu hình Firebase Cloud Realtime</h3>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">
+              Thông tin cấu hình <code>firebaseConfig</code> của dự án <code>hrm-mf14</code>:
+            </p>
+
+            <div class="field-item" style="margin-bottom: 12px;">
+              <span class="field-label">JSON firebaseConfig:</span>
+              <textarea id="input-firebase-config-json" rows="8" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "hrm-mf14.firebaseapp.com",\n  "projectId": "hrm-mf14",\n  "storageBucket": "hrm-mf14.firebasestorage.app",\n  "appId": "1:..."\n}' style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:11.5px; font-family:monospace; margin-top:4px;"></textarea>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <button class="btn-primary-green" onclick="handleSaveFirebaseConfigFromUI()" style="width: 100%; justify-content: center; padding: 10px; font-size: 13px; background:#ea580c;">
+                💾 Lưu cấu hình & Khởi động lại kết nối
+              </button>
+              <button class="btn-primary-green" onclick="syncAllLocalDataToFirestore()" style="width: 100%; justify-content: center; padding: 10px; font-size: 13px; background:#16a34a;">
+                🔥 Đẩy 30 nhân viên & 164 bản ghi lương lên Firestore
+              </button>
+              <button class="btn-action-outline" onclick="exportAllDataToExcel()" style="width: 100%; justify-content: center; padding: 9px; font-size: 13px; font-weight:600; color:#15803d; border-color:#15803d;">
+                📥 Tải xuống báo cáo Excel (.xlsx) chuẩn cho kế toán
+              </button>
+            </div>
+          </div>
+
+          <!-- HỘP 2: TÌNH TRẠNG & TÍNH NĂNG ĐÁM MÂY -->
+          <div class="config-box" style="border-top: 4px solid #0284c7;">
+            <h3 class="card-heading" style="margin-bottom: 12px; color: #0284c7;">☁️ Tính năng đám mây đã kích hoạt</h3>
+            <div style="font-size: 13px; color: #334155; line-height: 1.8;">
+              <ul style="padding-left: 20px; margin-bottom: 14px;">
+                <li><strong>Đồng bộ Realtime 2 chiều:</strong> Dữ liệu sửa đổi trên bất kỳ máy tính/trình duyệt nào sẽ cập nhật tức thì qua Firestore.</li>
+                <li><strong>Lưu trữ Hợp đồng Scan miễn phí 100%:</strong> File PDF/Ảnh scan được mã hóa và lưu trữ trực tiếp trên Firestore Database, không mất phí Firebase Storage và không cần thẻ thanh toán quốc tế.</li>
+                <li><strong>Xuất báo cáo Excel linh hoạt:</strong> Bấm nút xuất Excel bất cứ lúc nào để kế toán lấy file bảng lương chuẩn.</li>
+              </ul>
+              
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:12px; font-size:12px; color:#1e40af;">
+                💡 <strong>Mở quyền Firestore Rules:</strong> Đảm bảo vào <a href="https://console.firebase.google.com/project/hrm-mf14/firestore/rules" target="_blank" style="color:#0284c7; font-weight:700;">Firestore Rules ↗</a> đổi thành <code>allow read, write: if true;</code> và bấm <strong>Publish</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== SLIDE-OVER DRAWER (HỒ SƠ CHI TIẾT) ==================== -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <aside class="drawer-panel" id="emp-drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <div class="drawer-avatar" id="d-avatar">--</div>
+        <div class="drawer-user-info">
+          <h2 id="d-name">Hồ sơ nhân viên</h2>
+          <div class="drawer-subinfo">
+            <span id="d-subtitle">Mã NV · Chức danh · Phòng ban</span>
+            <span class="badge-status badge-active" id="d-status-pill">Đang làm việc</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-action-primary" id="btn-drawer-edit-emp" style="padding:6px 12px; font-size:12px;">✏️ Sửa hồ sơ</button>
+        <button class="btn-action-danger" id="btn-drawer-delete-emp" style="padding:6px 12px; font-size:12px;">🗑️ Xóa</button>
+        <button class="btn-drawer-close" id="btn-close-drawer">Đóng</button>
+      </div>
+    </div>
+
+    <!-- 5 Tabs -->
+    <div class="drawer-tabs">
+      <div class="drawer-tab active" data-pane="tab-personal">Thông tin cá nhân</div>
+      <div class="drawer-tab" data-pane="tab-contract">Hợp đồng</div>
+      <div class="drawer-tab" data-pane="tab-salary">Lương</div>
+      <div class="drawer-tab" data-pane="tab-leave">Nghỉ phép</div>
+      <div class="drawer-tab" data-pane="tab-timesheet">Chấm công</div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- PANE 1: THÔNG TIN CÁ NHÂN -->
+      <div class="drawer-content-pane active" id="tab-personal">
+        <!-- Thông tin cá nhân -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Thông tin cá nhân</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Mã NV</span>
+              <span class="field-value" id="f-code">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Họ và tên</span>
+              <span class="field-value" id="f-name">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Giới tính</span>
+              <span class="field-value" id="f-gender">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày sinh</span>
+              <span class="field-value" id="f-dob">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Dân tộc</span>
+              <span class="field-value" id="f-ethnicity">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Quê quán</span>
+              <span class="field-value" id="f-hometown">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số CCCD/Mã số thuế</span>
+              <span class="field-value" id="f-idcard">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày cấp CCCD</span>
+              <span class="field-value" id="f-iddate">-</span>
+            </div>
+            <div class="field-item" style="grid-column: span 2;">
+              <span class="field-label">Địa chỉ thường trú</span>
+              <span class="field-value" id="f-address">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số điện thoại</span>
+              <span class="field-value" id="f-phone">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Email công ty</span>
+              <span class="field-value" id="f-email" style="color:#0f766e;">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Trình độ</span>
+              <span class="field-value" id="f-edu">-</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Tình trạng hôn nhân</span>
+              <span class="field-value" id="f-marital">Đã kết hôn</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Số người phụ thuộc</span>
+              <span class="field-value" id="f-dependents">2</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Công việc -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Công việc</div>
+          <div class="field-grid-2">
+            <div class="field-item">
+              <span class="field-label">Phòng ban</span>
+              <span class="field-value" id="f-dept">Ban Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Chức vụ</span>
+              <span class="field-value" id="f-position">Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Chức danh công việc</span>
+              <span class="field-value" id="f-jobtitle">Giám đốc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Tổ/Ca</span>
+              <span class="field-value field-value-empty" id="f-shift">–</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày vào làm</span>
+              <span class="field-value" id="f-startdate">01/03/2012</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Trạng thái</span>
+              <span class="badge-status badge-active">Đang làm việc</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Ngày nghỉ việc</span>
+              <span class="field-value field-value-empty" id="f-leavedate">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hồ sơ giấy tờ (Trích xuất từ Excel) -->
+        <div class="detail-section-card">
+          <div class="detail-section-title">Hồ sơ pháp lý & Giấy tờ nhân sự (Đối chiếu Excel)</div>
+          <div id="d-documents-content" class="field-grid-2">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 2: HỢP ĐỒNG & DRIVE SCAN -->
+      <div class="drawer-content-pane" id="tab-contract">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Rà soát Hợp đồng lao động (Theo dữ liệu Excel)</div>
+          <div id="d-contract-content">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 3: LƯƠNG -->
+      <div class="drawer-content-pane" id="tab-salary">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Chi tiết tiền lương & Đóng bảo hiểm (Theo Excel)</div>
+          <div id="d-salary-content">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 4: NGHỈ PHÉP -->
+      <div class="drawer-content-pane" id="tab-leave">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Thông tin nghỉ phép</div>
+          <div id="d-leave-content">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PANE 5: CHẤM CÔNG -->
+      <div class="drawer-content-pane" id="tab-timesheet">
+        <div class="detail-section-card">
+          <div class="detail-section-title">Chấm công tháng 10/2026</div>
+          <div id="d-timesheet-content">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== MODAL: THÊM NHÂN VIÊN MỚI ==================== -->
+  <div class="modal-overlay" id="modal-add-employee">
+    <div class="modal-content" style="width: 680px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">➕ Thêm nhân viên mới (MF14)</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-add-employee')">✕</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <form id="form-add-employee" onsubmit="event.preventDefault(); handleSaveNewEmployee();">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Mã nhân viên <span class="required">*</span></label>
+              <input type="text" class="form-control" id="add-emp-code" placeholder="VD: MS037" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Họ và tên <span class="required">*</span></label>
+              <input type="text" class="form-control" id="add-emp-name" placeholder="Nguyễn Văn A" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phòng ban <span class="required">*</span></label>
+              <select class="form-control" id="add-emp-dept" required>
+                <option value="Giáo viên">Giáo viên</option>
+                <option value="Vận hành">Vận hành</option>
+                <option value="Ban giám hiệu">Ban giám hiệu</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chức danh / Vị trí</label>
+              <input type="text" class="form-control" id="add-emp-title" placeholder="VD: Giáo viên mầm non">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giới tính</label>
+              <select class="form-control" id="add-emp-gender">
+                <option value="Nữ">Nữ</option>
+                <option value="Nam">Nam</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" class="form-control" id="add-emp-phone" placeholder="0987654321">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CCCD / Hộ chiếu</label>
+              <input type="text" class="form-control" id="add-emp-idcard" placeholder="001199026083">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày sinh</label>
+              <input type="text" class="form-control" id="add-emp-dob" placeholder="DD/MM/YYYY (VD: 24/12/1989)">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Địa chỉ / HKTT</label>
+              <input type="text" class="form-control" id="add-emp-address" placeholder="Tổ 14, Phúc Lợi, Long Biên, Hà Nội">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mức lương Gross (VNĐ)</label>
+              <input type="number" class="form-control" id="add-emp-gross" placeholder="10000000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loại hợp đồng</label>
+              <select class="form-control" id="add-emp-contract-type">
+                <option value="Hợp đồng lao động 1 năm">Hợp đồng lao động 1 năm</option>
+                <option value="Thử việc">Thử việc</option>
+                <option value="Thư mời làm việc">Thư mời làm việc</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày bắt đầu làm việc</label>
+              <input type="text" class="form-control" id="add-emp-startdate" placeholder="01/10/2026">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số tài khoản & Tên ngân hàng</label>
+              <input type="text" class="form-control" id="add-emp-bank" placeholder="1029384756 - Vietcombank">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Ghi chú</label>
+              <input type="text" class="form-control" id="add-emp-note" placeholder="Ghi chú hồ sơ hoặc thử việc...">
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 10px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeModal('modal-add-employee')">Hủy bỏ</button>
+            <button type="submit" class="btn-modal-save">✓ Lưu nhân viên</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: CHỈNH SỬA NHÂN VIÊN ==================== -->
+  <div class="modal-overlay" id="modal-edit-employee">
+    <div class="modal-content" style="width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">✏️ Chỉnh sửa hồ sơ nhân viên</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-edit-employee')">✕</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <form id="form-edit-employee" onsubmit="event.preventDefault(); handleSaveEditEmployee();">
+          <input type="hidden" id="edit-emp-id">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Mã NV</label>
+              <input type="text" class="form-control" id="edit-emp-code" disabled style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Họ và tên <span class="required">*</span></label>
+              <input type="text" class="form-control" id="edit-emp-name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phòng ban</label>
+              <select class="form-control" id="edit-emp-dept" required>
+                <option value="Ban giám hiệu">Ban giám hiệu</option>
+                <option value="Vận hành">Vận hành</option>
+                <option value="Giáo viên">Giáo viên</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chức danh</label>
+              <input type="text" class="form-control" id="edit-emp-title">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Trạng thái công việc</label>
+              <select class="form-control" id="edit-emp-status">
+                <option value="Đang làm việc">Đang làm việc</option>
+                <option value="Đã nghỉ việc">Đã nghỉ việc</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" class="form-control" id="edit-emp-phone">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giới tính</label>
+              <select class="form-control" id="edit-emp-gender">
+                <option value="Nữ">Nữ</option>
+                <option value="Nam">Nam</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày sinh</label>
+              <input type="text" class="form-control" id="edit-emp-dob" placeholder="dd/mm/yyyy">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số CCCD / MST</label>
+              <input type="text" class="form-control" id="edit-emp-idcard">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lương Gross (thỏa thuận)</label>
+              <input type="text" class="form-control" id="edit-emp-gross" placeholder="VD: 15.000.000 đ">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mức lương đóng BHXH</label>
+              <input type="text" class="form-control" id="edit-emp-bhxh-base" placeholder="VD: 7.500.000 đ">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Địa chỉ thường trú / HKTT</label>
+              <input type="text" class="form-control" id="edit-emp-address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số hợp đồng</label>
+              <input type="text" class="form-control" id="edit-emp-contract-no">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Trạng thái hợp đồng</label>
+              <select class="form-control" id="edit-emp-contract-status">
+                <option value="Đang hiệu lực">Đang hiệu lực</option>
+                <option value="Sắp hết hạn">Sắp hết hạn</option>
+                <option value="Chưa ký HĐ">Chưa ký HĐ</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Ghi chú</label>
+              <input type="text" class="form-control" id="edit-emp-note">
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 10px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeModal('modal-edit-employee')">Hủy bỏ</button>
+            <button type="submit" class="btn-modal-save">✓ Cập nhật hồ sơ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: CHỈNH SỬA HỢP ĐỒNG LAO ĐỘNG ==================== -->
+  <div class="modal-overlay" id="modal-edit-contract">
+    <div class="modal-content" style="width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">📑 Chỉnh sửa Hợp đồng lao động</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-edit-contract')">✕</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <form id="form-edit-contract" onsubmit="event.preventDefault(); handleSaveEditContract();">
+          <input type="hidden" id="edit-c-empid">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Mã nhân viên</label>
+              <input type="text" class="form-control" id="edit-c-empcode" disabled style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Họ và tên</label>
+              <input type="text" class="form-control" id="edit-c-name" disabled style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phòng ban</label>
+              <input type="text" class="form-control" id="edit-c-dept" disabled style="background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chức danh</label>
+              <input type="text" class="form-control" id="edit-c-position" disabled style="background:#f1f5f9;">
+            </div>
+
+            <!-- HĐ Thử việc -->
+            <div class="form-group">
+              <label class="form-label">Số HĐ Thử việc</label>
+              <input type="text" class="form-control" id="edit-c-tv-no" placeholder="VD: 01/2024/HĐTV-MF14">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Thời hạn Thử việc</label>
+              <input type="text" class="form-control" id="edit-c-tv-period" placeholder="VD: 16/09/2024 - 15/11/2024">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hạn TV còn lại</label>
+              <input type="text" class="form-control" id="edit-c-tv-days" placeholder="VD: Hết hạn hoặc 15">
+            </div>
+
+            <!-- HĐ Chính thức -->
+            <div class="form-group">
+              <label class="form-label">Số HĐ Chính thức</label>
+              <input type="text" class="form-control" id="edit-c-ct-no" placeholder="VD: 01/2024/HĐLĐ-MF14">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Thời hạn HĐCT</label>
+              <input type="text" class="form-control" id="edit-c-ct-period" placeholder="VD: 16/11/2024 - 15/11/2025">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hạn CT còn lại (ngày)</label>
+              <input type="text" class="form-control" id="edit-c-ct-days" placeholder="VD: 21">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Kế toán check / Trạng thái HĐ</label>
+              <select class="form-control" id="edit-c-status">
+                <option value="Đã ký HĐ">Đã ký HĐ</option>
+                <option value="Trình ký">Trình ký</option>
+                <option value="Bổ sung hồ sơ">Bổ sung hồ sơ</option>
+                <option value="Chưa ký HĐ">Chưa ký HĐ</option>
+                <option value="Đang hiệu lực">Đang hiệu lực</option>
+                <option value="Sắp hết hạn">Sắp hết hạn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mức lương đóng BHXH</label>
+              <input type="text" class="form-control" id="edit-c-bhxh-base" placeholder="VD: 7,500,000 đ">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Ghi chú hợp đồng</label>
+              <input type="text" class="form-control" id="edit-c-note" placeholder="VD: Đã nộp bản gốc, chờ sếp ký...">
+            </div>
+
+            <!-- Khối Lưu Trữ Hợp Đồng Scan (Firebase Cloud Firestore - 100% Miễn Phí) -->
+            <div class="form-group full-width" style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <label class="form-label" style="color:#166534; font-weight:700; margin:0;">
+                  📄 Lưu trữ Hợp đồng Scan (Firebase Cloud - 100% Miễn phí)
+                </label>
+                <span style="font-size:11px; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:10px; font-weight:600;">
+                  ✓ Tự động lưu đám mây
+                </span>
+              </div>
+
+              <div style="margin-bottom:10px;">
+                <label style="font-size:11.5px; color:#475569; display:block; margin-bottom:4px;">Chọn file PDF / Ảnh hợp đồng scan để tải lên Cloud:</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <input type="file" id="edit-c-file-input" accept=".pdf,image/*" style="font-size:12px; flex:1; background:#fff; padding:6px; border:1px solid #cbd5e1; border-radius:6px;">
+                  <button type="button" class="btn-primary-green" id="btn-upload-contract-storage" onclick="handleUploadContractFile()" style="padding:7px 16px; font-size:12px; font-weight:600; white-space:nowrap; background:#15803d; border:none; border-radius:6px; color:#fff; cursor:pointer;">
+                    ⬆ Tải lên Cloud
+                  </button>
+                </div>
+                <div id="contract-file-status" style="font-size:11.5px; margin-top:6px; color:#64748b;">
+                  💡 File hợp đồng được lưu trữ vĩnh viễn trên Firebase Cloud Firestore hoàn toàn miễn phí.
+                </div>
+              </div>
+
+              <div style="border-top:1px dashed #86efac; padding-top:8px; margin-top:8px;">
+                <label style="font-size:11.5px; color:#475569; display:block; margin-bottom:3px;">Hoặc link file trực tiếp (Google Drive / URL ngoài nếu có):</label>
+                <div style="display:flex; gap:6px;">
+                  <input type="text" class="form-control" id="edit-c-drive-url" placeholder="Dán link Google Drive hoặc file đám mây tại đây..." style="flex:1; font-size:12px;">
+                  <button type="button" class="btn-action-outline" onclick="window.testOpenDriveContract()" style="font-size:11px; padding:6px 10px; white-space:nowrap;">
+                    👁️ Mở xem file
+                  </button>
+                </div>
+              </div>
+            </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 10px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeModal('modal-edit-contract')">Hủy bỏ</button>
+            <button type="submit" class="btn-modal-save">✓ Cập nhật hợp đồng</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: TẠO ĐƠN NGHỈ PHÉP ==================== -->
+  <div class="modal-overlay" id="modal-add-leave">
+    <div class="modal-content" style="width: 550px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">📝 Tạo đơn xin nghỉ phép</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-add-leave')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-add-leave" onsubmit="event.preventDefault(); handleSaveNewLeave();">
+          <div class="form-group">
+            <label class="form-label">Nhân viên xin nghỉ <span class="required">*</span></label>
+            <select class="form-control" id="add-leave-emp" required>
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Loại nghỉ phép <span class="required">*</span></label>
+              <select class="form-control" id="add-leave-type" required>
+                <option value="Phép năm">Phép năm</option>
+                <option value="Việc riêng">Việc riêng</option>
+                <option value="Nghỉ ốm">Nghỉ ốm</option>
+                <option value="Thai sản">Thai sản</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số ngày nghỉ <span class="required">*</span></label>
+              <input type="number" step="0.5" class="form-control" id="add-leave-days" value="1" min="0.5" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Từ ngày</label>
+              <input type="text" class="form-control" id="add-leave-from" placeholder="DD/MM/YYYY (VD: 25/10/2026)" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Đến ngày</label>
+              <input type="text" class="form-control" id="add-leave-to" placeholder="DD/MM/YYYY (VD: 25/10/2026)" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lý do xin nghỉ <span class="required">*</span></label>
+            <textarea class="form-control" id="add-leave-reason" rows="3" placeholder="Nhập lý do chi tiết và phương án bàn giao công việc..." required></textarea>
+          </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 10px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeModal('modal-add-leave')">Hủy bỏ</button>
+            <button type="submit" class="btn-modal-save">✓ Gửi đơn nghỉ phép</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: THÊM HỢP ĐỒNG MỚI ==================== -->
+  <div class="modal-overlay" id="modal-add-contract">
+    <div class="modal-content" style="width: 580px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">📄 Tạo mới / Ký hợp đồng lao động</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-add-contract')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-add-contract" onsubmit="event.preventDefault(); handleSaveNewContract();">
+          <div class="form-group">
+            <label class="form-label">Chọn nhân sự <span class="required">*</span></label>
+            <select class="form-control" id="add-contract-emp" required>
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Số hợp đồng <span class="required">*</span></label>
+              <input type="text" class="form-control" id="add-contract-no" placeholder="VD: 015/2026/HĐLĐ/MS14" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loại hợp đồng</label>
+              <select class="form-control" id="add-contract-type">
+                <option value="Hợp đồng lao động 1 năm">Hợp đồng lao động 1 năm</option>
+                <option value="Thử việc">Thử việc</option>
+                <option value="Thư mời làm việc">Thư mời làm việc</option>
+                <option value="Không xác định thời hạn">Không xác định thời hạn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày bắt đầu</label>
+              <input type="text" class="form-control" id="add-contract-start" placeholder="01/10/2026" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày kết thúc</label>
+              <input type="text" class="form-control" id="add-contract-end" placeholder="01/10/2027">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mức lương đóng BH / Thỏa thuận</label>
+              <input type="text" class="form-control" id="add-contract-salary" placeholder="10.000.000 đ">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Trạng thái</label>
+              <select class="form-control" id="add-contract-status">
+                <option value="Đang hiệu lực">Đang hiệu lực</option>
+                <option value="Sắp hết hạn">Sắp hết hạn</option>
+                <option value="Chưa ký HĐ">Chưa ký HĐ</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên file scan lưu trên Google Drive</label>
+            <input type="text" class="form-control" id="add-contract-file" placeholder="VD: HD_NguyenVanA_Scan.pdf">
+          </div>
+          <div class="modal-footer" style="padding: 12px 0 0 0; margin-top: 10px;">
+            <button type="button" class="btn-modal-cancel" onclick="closeModal('modal-add-contract')">Hủy bỏ</button>
+            <button type="submit" class="btn-modal-save">✓ Lưu hợp đồng</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: PHIẾU LƯƠNG CHI TIẾT ==================== -->
+  <div class="modal-overlay" id="modal-view-payslip">
+    <div class="modal-content" style="width: 520px;">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700; color: #1e293b;">💰 Phiếu lương nhân viên chi tiết</h3>
+        <button class="btn-drawer-close" onclick="closeModal('modal-view-payslip')">✕</button>
+      </div>
+      <div class="modal-body" id="payslip-modal-body">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancel" onclick="closeModal('modal-view-payslip')">Đóng</button>
+        <button class="btn-modal-save" onclick="window.print()">🖨️ In phiếu lương</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Biến môi trường & cấu hình Google Client ID -->
+  <script src="config.js"></script>
+  <!-- Dữ liệu chuẩn hóa 100% từ file DANH SÁCH NHÂN VIÊN MS14_new.xlsx -->
+  <script src="data/mf14-data.js"></script>
+  <!-- Script logic ứng dụng -->
+  <script src="app.js"></script>
+</body>
+</html>

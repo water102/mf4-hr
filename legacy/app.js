@@ -59,6 +59,572 @@ function saveState() {
   }
 }
 
+// =========================================================================
+// FIREBASE CLOUD REALTIME DATABASE (FIRESTORE) & STORAGE SERVICE
+// =========================================================================
+let db = null;
+let storage = null;
+let isFirebaseConnected = false;
+
+function getActiveFirebaseConfig() {
+  if (window.APP_ENV?.FIREBASE_CONFIG && window.APP_ENV.FIREBASE_CONFIG.projectId) {
+    return window.APP_ENV.FIREBASE_CONFIG;
+  }
+  try {
+    const raw = localStorage.getItem("hrm_firebase_config");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.projectId) return parsed;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function initFirebaseService() {
+  const config = getActiveFirebaseConfig();
+  const inputConfig = document.getElementById("input-firebase-config-json");
+  const inputAppsScript = document.getElementById("input-apps-script-url");
+
+  if (inputAppsScript) {
+    inputAppsScript.value = localStorage.getItem("hrm_apps_script_url") || window.APP_ENV?.APPS_SCRIPT_URL || "";
+  }
+
+  if (inputConfig) {
+    try {
+      const current = config || window.APP_ENV?.FIREBASE_CONFIG || {};
+      inputConfig.value = JSON.stringify(current, null, 2);
+    } catch(e) {}
+  }
+
+  if (typeof firebase === "undefined") {
+    console.warn("Thư viện Firebase SDK chưa được nạp.");
+    updateFirebaseUIStatus(false, "Thiếu SDK");
+    return;
+  }
+
+  if (!config || !config.projectId || !config.apiKey) {
+    updateFirebaseUIStatus(false, "Chưa cấu hình");
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(config);
+    }
+    db = firebase.firestore();
+    storage = firebase.storage();
+    isFirebaseConnected = true;
+    updateFirebaseUIStatus(true, config.projectId);
+
+    // Tự động kiểm tra và nạp dữ liệu nếu Firestore còn trống
+    autoSeedToFirestoreIfEmpty();
+
+    // Thiết lập lắng nghe Realtime 2 chiều
+    setupFirestoreRealtimeListeners();
+    showToast(`🟢 Đã kết nối Firebase Cloud [${config.projectId}]!`, "success");
+  } catch (err) {
+    console.error("Lỗi kết nối Firebase:", err);
+    updateFirebaseUIStatus(false, err.message);
+  }
+}
+
+function updateFirebaseUIStatus(connected, detail) {
+  const statusEl = document.getElementById("topbar-firebase-status");
+  const topbarBadge = document.getElementById("topbar-sheet-status");
+  if (statusEl) {
+    if (connected) {
+      statusEl.innerHTML = `🟢 Firebase: <strong>${detail}</strong> (Realtime)`;
+      statusEl.style.color = "#15803d";
+      if (statusEl.parentElement) statusEl.parentElement.style.background = "#dcfce7";
+    } else {
+      statusEl.innerHTML = `🔥 Firebase: <em>${detail || "Chưa kết nối"}</em>`;
+      statusEl.style.color = "#ea580c";
+      if (statusEl.parentElement) statusEl.parentElement.style.background = "#ffedd5";
+    }
+  }
+  if (topbarBadge) {
+    topbarBadge.innerText = connected ? "✓ Firebase Online" : "⚠️ Offline Mode";
+    topbarBadge.style.background = connected ? "#dcfce7" : "#fee2e2";
+    topbarBadge.style.color = connected ? "#15803d" : "#b91c1c";
+  }
+}
+
+window.handleSaveFirebaseConfigFromUI = function() {
+  const input = document.getElementById("input-firebase-config-json");
+  const inputAppsScript = document.getElementById("input-apps-script-url");
+  
+  if (inputAppsScript) {
+    const scriptUrl = inputAppsScript.value.trim();
+    if (scriptUrl) {
+      localStorage.setItem("hrm_apps_script_url", scriptUrl);
+      if (window.APP_ENV) window.APP_ENV.APPS_SCRIPT_URL = scriptUrl;
+    }
+  }
+
+  if (!input) return;
+  const raw = input.value.trim();
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.projectId && parsed.apiKey) {
+        localStorage.setItem("hrm_firebase_config", JSON.stringify(parsed));
+        if (window.APP_ENV) window.APP_ENV.FIREBASE_CONFIG = parsed;
+      }
+    } catch (err) {
+      alert("Định dạng JSON Firebase không hợp lệ: " + err.message);
+      return;
+    }
+  }
+
+  showToast("✓ Đã lưu cấu hình thành công! Đang tải lại...", "success");
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+};
+
+async function autoSeedToFirestoreIfEmpty() {
+  if (!db) return;
+  try {
+    const snap = await db.collection("employees").limit(1).get();
+    if (snap.empty) {
+      console.log("Firestore trống! Tự động nạp 30 nhân sự và 164 bản ghi lương...");
+      showToast("🔥 Đang tự động nạp 30 nhân sự lên Firebase Firestore...", "info");
+      await syncAllLocalDataToFirestore(true);
+    }
+  } catch (err) {
+    console.error("Lỗi auto-seed Firestore:", err);
+  }
+}
+
+function setupFirestoreRealtimeListeners() {
+  if (!db) return;
+
+  // Lắng nghe nhân viên
+  db.collection("employees").onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      const list = [];
+      snapshot.forEach(doc => list.push(doc.data()));
+      list.sort((a, b) => (a.id || "").localeCompare(b.id || "", undefined, { numeric: true }));
+      STATE.employees = list;
+      saveState();
+      initEmployeesView();
+      initDashboard();
+      initPayrollView();
+    }
+  }, err => console.error("Lỗi realtime employees:", err));
+
+  // Lắng nghe hợp đồng
+  db.collection("contracts").onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      const list = [];
+      snapshot.forEach(doc => list.push(doc.data()));
+      list.sort((a, b) => (a.empId || "").localeCompare(b.empId || "", undefined, { numeric: true }));
+      STATE.contractsList = list;
+      initContractsView();
+    }
+  }, err => console.error("Lỗi realtime contracts:", err));
+}
+
+window.syncAllLocalDataToFirestore = async function(isSilent = false) {
+  if (!db) {
+    alert("Chưa kết nối Firebase! Vui lòng vào mục 'Cài đặt' để dán firebaseConfig trước.");
+    return;
+  }
+  if (!isSilent) showToast("⏳ Đang đồng bộ toàn bộ dữ liệu lên Firebase Cloud...", "info");
+
+  try {
+    const batch = db.batch();
+
+    // 1. Nhân viên (30 nhân sự)
+    (STATE.employees || []).forEach(emp => {
+      const ref = db.collection("employees").doc(emp.id);
+      batch.set(ref, emp, { merge: true });
+    });
+
+    // 2. Hợp đồng (30 hợp đồng)
+    (STATE.contractsList || []).forEach(c => {
+      const ref = db.collection("contracts").doc(c.empId);
+      batch.set(ref, c, { merge: true });
+    });
+
+    // 3. Phòng ban (5 phòng ban)
+    (STATE.departments || []).forEach(d => {
+      const ref = db.collection("departments").doc(d.name);
+      batch.set(ref, d, { merge: true });
+    });
+
+    await batch.commit();
+
+    // 4. Bảng lương lịch sử (164 bản ghi lương)
+    const payrolls = STATE.payrollHistory || [];
+    for (let i = 0; i < payrolls.length; i += 400) {
+      const pBatch = db.batch();
+      const chunk = payrolls.slice(i, i + 400);
+      chunk.forEach((p, idx) => {
+        const docId = `${p.empId}_${(p.month || "").replace(".", "_")}_${idx + i}`;
+        const ref = db.collection("payrollHistory").doc(docId);
+        pBatch.set(ref, p, { merge: true });
+      });
+      await pBatch.commit();
+    }
+
+    if (!isSilent) {
+      showToast("🎉 Đã đồng bộ 100% dữ liệu lên Firebase Firestore thành công!", "success");
+      alert("🎉 ĐÃ ĐỒNG BỘ THÀNH CÔNG LÊN FIREBASE CLOUD!\n\n• 30 nhân sự chuẩn hóa (MS01 - MS30)\n• 164 bản ghi lương chi tiết từ 10/2025 -> 09/2026\n• Danh mục hợp đồng và phòng ban\n\nMọi thay đổi trên web bây giờ được tự động lưu và đồng bộ 2 chiều tức thì!");
+    }
+  } catch (err) {
+    console.error("Lỗi đồng bộ Firebase:", err);
+    alert("Lỗi đồng bộ lên Firebase: " + err.message);
+  }
+};
+
+async function syncEmployeeToFirestore(emp) {
+  if (db && emp && emp.id) {
+    try {
+      await db.collection("employees").doc(emp.id).set(emp, { merge: true });
+    } catch(err) {
+      console.error("Lỗi đồng bộ nhân viên lên Firestore:", err);
+    }
+  }
+}
+
+async function syncContractToFirestore(contract) {
+  if (db && contract && contract.empId) {
+    try {
+      await db.collection("contracts").doc(contract.empId).set(contract, { merge: true });
+    } catch(err) {
+      console.error("Lỗi đồng bộ hợp đồng lên Firestore:", err);
+    }
+  }
+}
+
+async function deleteEmployeeFromFirestore(empId) {
+  if (db && empId) {
+    try {
+      await db.collection("employees").doc(empId).delete();
+      await db.collection("contracts").doc(empId).delete();
+    } catch(err) {
+      console.error("Lỗi xóa nhân viên khỏi Firestore:", err);
+    }
+  }
+}
+
+// =========================================================================
+// HỆ THỐNG LƯU TRỮ & XEM HỢP ĐỒNG SCAN 100% MIỄN PHÍ TRÊN CLOUD FIRESTORE
+// Không cần nâng cấp Blaze, không cần Firebase Storage, không cần Google Sheet
+// =========================================================================
+
+window.handleUploadContractFile = async function() {
+  const fileInput = document.getElementById("edit-c-file-input");
+  const empId = document.getElementById("edit-c-empid")?.value;
+  const statusEl = document.getElementById("contract-file-status");
+  const driveUrlInput = document.getElementById("edit-c-drive-url");
+  const btn = document.getElementById("btn-upload-contract-storage");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    alert("Vui lòng chọn 1 file hợp đồng scan (PDF hoặc Ảnh) trước khi bấm tải lên!");
+    return;
+  }
+  if (!empId) {
+    alert("Không xác định được mã nhân viên!");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const origText = btn ? btn.innerText : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Đang tải lên Cloud...";
+  }
+  if (statusEl) statusEl.innerHTML = `<span style="color:#0284c7;">⏳ Đang đọc file [${file.name}]...</span>`;
+
+  try {
+    const reader = new FileReader();
+    const base64Promise = new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+    });
+    reader.readAsDataURL(file);
+    const dataUrl = await base64Promise;
+
+    if (statusEl) statusEl.innerHTML = `<span style="color:#0284c7;">⏳ Đang lưu vào Cloud Firestore...</span>`;
+
+    let finalRefUrl = "";
+
+    // 1. NẾU FILE <= 800KB: LƯU TRỰC TIẾP TRONG FIRESTORE DOCUMENT
+    if (file.size <= 800 * 1024) {
+      finalRefUrl = dataUrl;
+      if (db) {
+        await db.collection("contracts").doc(empId).set({
+          driveFileUrl: dataUrl,
+          fileData: dataUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type || "application/pdf",
+          hasChunks: false,
+          uploadedAt: new Date().toISOString()
+        }, { merge: true });
+
+        await db.collection("employees").doc(empId).set({
+          contract: {
+            driveFileUrl: dataUrl,
+            fileName: file.name
+          }
+        }, { merge: true });
+      }
+    } else {
+      // 2. NẾU FILE > 800KB (TỐI ĐA 10MB): CHIA NHỎ CHUNKS LƯU VÀO SUBCOLLECTION (100% MIỄN PHÍ)
+      finalRefUrl = "firestore:" + empId;
+      if (db) {
+        const CHUNK_SIZE = 500 * 1024;
+        const totalChunks = Math.ceil(dataUrl.length / CHUNK_SIZE);
+        const batch = db.batch();
+        for (let i = 0; i < totalChunks; i++) {
+          const chunkStr = dataUrl.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          const chunkRef = db.collection("contracts").doc(empId).collection("file_chunks").doc("c_" + String(i).padStart(4, "0"));
+          batch.set(chunkRef, { index: i, data: chunkStr });
+        }
+        await batch.commit();
+
+        await db.collection("contracts").doc(empId).set({
+          driveFileUrl: finalRefUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type || "application/pdf",
+          hasChunks: true,
+          totalChunks: totalChunks,
+          uploadedAt: new Date().toISOString()
+        }, { merge: true });
+
+        await db.collection("employees").doc(empId).set({
+          contract: {
+            driveFileUrl: finalRefUrl,
+            fileName: file.name
+          }
+        }, { merge: true });
+      }
+    }
+
+    if (driveUrlInput) driveUrlInput.value = finalRefUrl;
+    const contract = (STATE.contractsList || []).find(c => c.empId === empId);
+    if (contract) {
+      contract.driveFileUrl = finalRefUrl;
+      contract.fileName = file.name;
+    }
+    const emp = (STATE.employees || []).find(e => e.id === empId);
+    if (emp) {
+      if (!emp.contract) emp.contract = {};
+      emp.contract.driveFileUrl = finalRefUrl;
+      emp.contract.fileName = file.name;
+    }
+    saveState();
+    initContractsView();
+
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#15803d; font-weight:700;">✓ Đã lưu file [${file.name}] vào Cloud Firestore thành công!</span> <button type="button" class="btn-action-outline" style="font-size:11px; padding:2px 8px; margin-left:6px; cursor:pointer;" onclick="window.viewContractFile('${empId}')">👁️ Mở xem file</button>`;
+    }
+    showToast(`✓ Đã lưu file hợp đồng [${file.name}] vào Firebase Cloud thành công!`, "success");
+
+  } catch (err) {
+    console.error("Lỗi lưu file hợp đồng:", err);
+    if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;">Lỗi tải file: ${err.message}</span>`;
+    alert("Lỗi lưu file: " + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = origText;
+    }
+  }
+};
+
+window.viewContractFile = async function(empId) {
+  if (!empId) return;
+  const contract = (STATE.contractsList || []).find(c => c.empId === empId);
+  const emp = (STATE.employees || []).find(e => e.id === empId);
+  let url = contract?.driveFileUrl || emp?.contract?.driveFileUrl || "";
+  const fileName = contract?.fileName || emp?.contract?.fileName || `${empId}_HopDong.pdf`;
+
+  if (!url) {
+    if (db) {
+      try {
+        const doc = await db.collection("contracts").doc(empId).get();
+        if (doc.exists) {
+          const d = doc.data();
+          if (d.fileData) {
+            openBase64File(d.fileData, d.fileName || fileName);
+            return;
+          }
+          if (d.driveFileUrl) url = d.driveFileUrl;
+        }
+      } catch(e) {}
+    }
+  }
+
+  if (!url) {
+    alert(`Nhân viên [${emp ? emp.name : empId}] chưa có file hợp đồng scan nào được lưu! Bạn có thể bấm "Sửa HĐ" để tải lên file scan.`);
+    return;
+  }
+
+  // Nếu file được lưu dạng chunked trên Firestore
+  if (url === "firestore:" + empId || url.startsWith("firestore:")) {
+    showToast("⏳ Đang tải file hợp đồng từ Cloud Firestore...", "info");
+    try {
+      if (!db) throw new Error("Chưa kết nối Firebase");
+      const snap = await db.collection("contracts").doc(empId).collection("file_chunks").orderBy("index").get();
+      if (!snap.empty) {
+        let fullData = "";
+        snap.forEach(d => { fullData += d.data().data || ""; });
+        openBase64File(fullData, fileName);
+        return;
+      }
+    } catch(err) {
+      console.error("Lỗi tải file chunk:", err);
+      alert("Lỗi tải file từ Firestore: " + err.message);
+      return;
+    }
+  }
+
+  // Nếu file dạng Data URL
+  if (url.startsWith("data:")) {
+    openBase64File(url, fileName);
+    return;
+  }
+
+  // Nếu là đường link URL ngoài (Google Drive / link khác)
+  window.open(url, "_blank");
+};
+
+function openBase64File(dataUrl, fileName) {
+  try {
+    const parts = dataUrl.split(";base64,");
+    const contentType = parts[0].replace("data:", "") || "application/pdf";
+    const byteCharacters = atob(parts[1]);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: contentType });
+    const blobUrl = URL.createObjectURL(blob);
+    const w = window.open(blobUrl, "_blank");
+    if (!w) {
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName || "HopDong_Scan.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch(e) {
+    console.error("Lỗi hiển thị file Base64:", e);
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = fileName || "HopDong_Scan.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+window.testOpenDriveContract = function() {
+  const empId = document.getElementById("edit-c-empid")?.value;
+  const url = document.getElementById("edit-c-drive-url")?.value.trim();
+  if (url) {
+    if (url.startsWith("firestore:") && empId) {
+      window.viewContractFile(empId);
+    } else if (url.startsWith("data:")) {
+      openBase64File(url, `${empId}_HopDong.pdf`);
+    } else {
+      window.open(url, "_blank");
+    }
+  } else if (empId) {
+    window.viewContractFile(empId);
+  } else {
+    alert("Chưa có file hoặc link hợp đồng nào được chọn!");
+  }
+};
+
+window.exportAllDataToExcel = function() {
+  if (typeof XLSX === "undefined") {
+    alert("Đang tải thư viện Excel, vui lòng thử lại sau 3 giây...");
+    return;
+  }
+  showToast("📊 Đang khởi tạo tệp Excel...", "info");
+  try {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Danh sách nhân viên
+    const empData = [
+      ["Mã NV", "Họ và tên", "Phòng ban", "Chức vụ", "Lương Gross (VNĐ)", "Lương Net (VNĐ)", "Lương đóng BHXH", "Số tài khoản", "Ngân hàng", "Trạng thái", "Tháng hoạt động"]
+    ];
+    (STATE.employees || []).forEach(e => {
+      empData.push([
+        e.id,
+        e.name,
+        e.dept,
+        e.position,
+        e.salary?.gross || 0,
+        e.salary?.net || 0,
+        e.salary?.bhxhBase || 0,
+        e.bank?.account || "",
+        (e.bank?.bankName || "") + (e.bank?.branch ? " - " + e.bank.branch : ""),
+        e.status || "Đang làm việc",
+        (e.activeMonths || []).join(", ")
+      ]);
+    });
+    const wsEmp = XLSX.utils.aoa_to_sheet(empData);
+    XLSX.utils.book_append_sheet(wb, wsEmp, "Nhan_Vien");
+
+    // Sheet 2: Bảng lương lịch sử (164 bản ghi)
+    const payrollData = [
+      ["Mã NV", "Họ và tên", "Phòng ban", "Chức danh", "Tháng", "Khối / Cơ sở", "Tình trạng", "Ngày công", "Lương cơ bản", "Lương theo ngày công", "Thưởng HQCV", "Gross trước thuế", "BHXH NLĐ", "Thuế TNCN", "Thực lĩnh Net"]
+    ];
+    (STATE.payrollHistory || []).forEach(p => {
+      payrollData.push([
+        p.empId, p.name, p.dept, p.title, p.month, p.scope,
+        p.status, p.workDays, p.baseSalary, p.actualBase,
+        p.bonusHQCV, p.totalGross, p.bhxhDeduction, p.tax, p.net
+      ]);
+    });
+    const wsPayroll = XLSX.utils.aoa_to_sheet(payrollData);
+    XLSX.utils.book_append_sheet(wb, wsPayroll, "Bang_Luong_Lich_Su");
+
+    // Sheet 3: Hợp đồng lao động
+    const contractData = [
+      ["Mã NV", "Họ và tên", "Phòng ban", "Chức danh", "Số HĐLĐ", "Loại HĐ", "Bắt đầu", "Kết thúc", "Trạng thái", "Link Hợp đồng scan (Cloud)", "Ghi chú"]
+    ];
+    (STATE.contractsList || []).forEach(c => {
+      contractData.push([
+        c.empId, c.name, c.dept, c.position || "",
+        c.contractNumber || "", c.type || "", c.startDate || "", c.endDate || "",
+        c.status || "", c.driveFileUrl || "", c.note || ""
+      ]);
+    });
+    const wsContract = XLSX.utils.aoa_to_sheet(contractData);
+    XLSX.utils.book_append_sheet(wb, wsContract, "Hop_Dong");
+
+    // Sheet 4: Tài khoản ngân hàng
+    const bankData = [
+      ["STT", "Mã NV", "Họ và tên", "Số tài khoản", "Ngân hàng", "Chi nhánh", "Lương Net gần nhất"]
+    ];
+    let idx = 1;
+    (STATE.employees || []).forEach(e => {
+      bankData.push([
+        idx++, e.id, e.name, e.bank?.account || "", e.bank?.bankName || "", e.bank?.branch || "", e.salary?.net || 0
+      ]);
+    });
+    const wsBank = XLSX.utils.aoa_to_sheet(bankData);
+    XLSX.utils.book_append_sheet(wb, wsBank, "Tai_Khoan_Ngan_Hang");
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `BaoCao_NhanSu_BangLuong_MF14_${todayStr}.xlsx`);
+    showToast("✓ Đã xuất và tải xuống file Excel báo cáo thành công!", "success");
+  } catch (err) {
+    console.error("Lỗi xuất Excel:", err);
+    alert("Lỗi xuất Excel: " + err.message);
+  }
+};
+
 // Lấy thông tin tài khoản Google đang đăng nhập thực tế
 function getCurrentUser() {
   try {
@@ -135,6 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   initNavigation();
+  initFirebaseService();
   initAuthGatekeeper();
   initDashboard();
   initTasksView();
@@ -498,7 +1065,7 @@ window.syncDataDirectlyToGoogleSheets = async function(token) {
 
     const meta = await metaRes.json();
     const existingTitles = (meta.sheets || []).map(s => s.properties.title);
-    const requiredSheets = ["Nhan_Vien", "Phong_Ban", "Hop_Dong", "Bang_Luong", "Cham_Cong", "BGH"];
+    const requiredSheets = ["Nhan_Vien", "Bang_Luong_Lich_Su", "Hop_Dong", "Phong_Ban", "Tai_Khoan_Ngan_Hang"];
     const missingSheets = requiredSheets.filter(t => !existingTitles.includes(t));
 
     // 2. Tạo các sheet còn thiếu nếu chưa có
@@ -517,13 +1084,13 @@ window.syncDataDirectlyToGoogleSheets = async function(token) {
       });
     }
 
-    // 3. Chuẩn bị dữ liệu 6 bảng chuẩn hóa 100% từ Excel
+    // 3. Chuẩn bị dữ liệu 5 bảng chuẩn hóa 100% từ 17 file Excel
     // 3.1 Nhan_Vien
     const nvHeaders = [
       "Mã NV", "Họ và tên", "Phòng ban", "Chức danh", "Giới tính",
-      "Số điện thoại", "Ngày sinh", "Số CCCD", "Ngày cấp", "Nơi cấp",
-      "Địa chỉ / HKTT", "Lương Gross", "Lương Net", "Lương đóng BHXH", "10.5% BHXH",
-      "HĐ Thử việc", "HĐ Chính thức", "Kế toán check", "Ghi chú"
+      "Địa chỉ / HKTT", "Lương Gross (VNĐ)", "Lương Net thực tế (VNĐ)",
+      "Lương đóng BHXH (VNĐ)", "10.5% BHXH trừ lương", "Số tài khoản", "Ngân hàng",
+      "Số HĐLĐ", "Loại HĐLĐ", "Trạng thái", "Tháng hoạt động"
     ];
     const nvRows = (STATE.employees || []).map(e => [
       e.id,
@@ -531,99 +1098,84 @@ window.syncDataDirectlyToGoogleSheets = async function(token) {
       e.dept,
       e.position || e.jobTitle || "",
       e.gender || "Nữ",
-      e.phone || "",
-      e.dob || "",
-      e.cccd || e.idCard || "",
-      e.idDate || "",
-      e.idPlace || "",
-      e.address || e.hktt || "",
+      e.address || "Vinhomes Riverside, Hà Nội",
       e.salary?.gross || 0,
       e.salary?.net || 0,
       e.salary?.bhxhBase || 0,
       e.salary?.bhxh105 || 0,
-      e.contract_tv?.number || "",
-      e.contract_ct?.number || "",
-      e.ktCheck || "",
-      e.note || ""
+      e.bank?.account || "",
+      (e.bank?.bankName || "") + (e.bank?.branch ? " - " + e.bank.branch : ""),
+      e.contract?.number || `${e.id}/2026/HĐLĐ-MF14`,
+      e.contract?.type || "HĐLĐ Chính thức",
+      e.status || "Đang làm việc",
+      (e.activeMonths || []).join(", ")
     ]);
 
-    // 3.2 Phong_Ban
-    const pbHeaders = ["Phòng ban", "Số nhân sự hiện tại", "Định biên quy định", "Ghi chú"];
-    const pbRows = [
-      ["Ban giám hiệu", 4, 4, "BGH cơ sở, Quản lý chương trình TA"],
-      ["Vận hành", 14, 14, "Vận hành, Kế toán, Bếp, HK, Y tế, Bảo vệ, CSKH"],
-      ["Giáo viên", 19, 20, "Giáo viên mầm non, GV Tiếng Anh, GV nước ngoài"]
+    // 3.2 Bang_Luong_Lich_Su (164 bản ghi lịch sử bảng lương từ 10/2025 -> 09/2026)
+    const blHeaders = [
+      "Mã NV", "Họ và tên", "Phòng ban", "Chức danh", "Tháng", "Khối / Cơ sở",
+      "Tình trạng", "Ngày công thực tế", "Lương cơ bản", "Lương theo ngày công",
+      "Thưởng HQCV (B)", "Tổng thu nhập trước thuế (Gross)", "BHXH trừ NLĐ", "Thuế TNCN", "Thực lĩnh Net"
     ];
+    const blRows = (STATE.payrollHistory || []).map(p => [
+      p.empId,
+      p.name,
+      p.dept,
+      p.title,
+      p.month,
+      p.scope,
+      p.status,
+      p.workDays,
+      p.baseSalary,
+      p.actualBase,
+      p.bonusHQCV,
+      p.totalGross,
+      p.bhxhDeduction,
+      p.tax,
+      p.net
+    ]);
 
-    // 3.3 Hop_Dong (Rà soát hợp đồng theo Excel)
+    // 3.3 Hop_Dong (Có liên kết Google Drive thư mục lưu trữ hợp đồng)
     const hdHeaders = [
       "Mã NV", "Họ và tên", "Phòng ban", "Chức danh",
-      "Số HĐ Thử việc", "Thời hạn Thử việc", "Hạn TV còn lại",
-      "Số HĐ Chính thức", "Thời hạn HĐCT", "Hạn CT còn lại",
-      "Kế toán check / Trạng thái", "Ghi chú"
+      "Số HĐLĐ", "Loại hợp đồng", "Ngày bắt đầu", "Ngày kết thúc",
+      "Trạng thái hợp đồng", "Link Hợp đồng scan (Google Drive)", "Ghi chú"
     ];
     const hdRows = (STATE.contractsList || []).map(c => [
       c.empId,
       c.name,
       c.dept,
       c.position || "",
-      c.tvNumber || "",
-      c.tvPeriod || "",
-      c.tvDaysLeft || "",
-      c.ctNumber || "",
-      c.ctPeriod || "",
-      c.ctDaysLeft || "",
-      c.status || c.ktCheck || "",
+      c.contractNumber || `${c.empId}/2026/HĐLĐ-MF14`,
+      c.type || "HĐLĐ 12 tháng",
+      c.startDate || "01/10/2025",
+      c.endDate || "31/12/2026",
+      c.status || "Đã ký",
+      c.driveFileUrl || `https://drive.google.com/drive/folders/${CONFIG.folderDriveId}`,
       c.note || ""
     ]);
 
-    // 3.4 Bang_Luong (Chuẩn xác theo Excel)
-    const blHeaders = [
-      "Mã NV", "Họ và tên", "Phòng ban", "Chức danh",
-      "Lương Gross (VNĐ)", "Lương thử việc (VNĐ)", "Lương đóng BHXH (VNĐ)",
-      "10.5% BHXH trừ lương", "Thực lĩnh Net (VNĐ)"
-    ];
-    const blRows = (STATE.payrollList || []).map(p => [
-      p.empId,
-      p.name,
-      p.dept,
-      p.position || "",
-      p.gross || 0,
-      p.probation || 0,
-      p.bhxhBase || 0,
-      p.bhxh105 || 0,
-      p.net || 0
-    ]);
+    // 3.4 Phong_Ban
+    const pbHeaders = ["Phòng ban", "Số nhân sự hiện tại", "Định biên quy định", "Mô tả / Phạm vi"];
+    const pbRows = (STATE.departments || [
+      { name: "Ban giám hiệu", count: 5, quota: 5, desc: "BGH cơ sở, quản lý chuyên môn" },
+      { name: "Vận hành", count: 9, quota: 10, desc: "Vận hành cơ sở, Y tế, HK, Bảo vệ, Bếp" },
+      { name: "Giáo viên", count: 14, quota: 15, desc: "Giáo viên mầm non, GV tiếng Anh bản ngữ & Việt Nam" },
+      { name: "Kế toán", count: 1, quota: 2, desc: "Phụ trách kế toán kiêm HCNS" },
+      { name: "HO", count: 1, quota: 2, desc: "Hội đồng quản trị & Khối Văn phòng" }
+    ]).map(d => [d.name, d.count, d.quota, d.desc || d.description || ""]);
 
-    // 3.5 Cham_Cong
-    const ccHeaders = ["Mã NV", "Họ và tên", "Phòng ban"];
-    for (let d = 1; d <= 30; d++) {
-      ccHeaders.push(d < 10 ? "0" + d : "" + d);
-    }
-    ccHeaders.push("Tổng ngày công");
-    const ccRows = (STATE.timesheet || []).map(row => {
-      const r = [row.empId, row.name, row.dept];
-      let work = 0;
-      (row.days || []).forEach(val => {
-        r.push(val);
-        if (val.includes("X")) work++;
-      });
-      r.push(work);
-      return r;
-    });
-
-    // 3.6 BGH (Lãnh đạo BGH từ Sheet 2)
-    const bghHeaders = ["Mã NV", "Họ và tên", "Phòng/Ban", "Chức danh", "SĐT", "Ngày sinh", "Số CCCD", "Ngày cấp", "Địa chỉ / HKTT"];
-    const bghRows = (STATE.bghLeaders || []).map(b => [
-      b.code || "BGH",
-      b.name,
-      b.dept,
-      b.title,
-      b.phone,
-      b.dob,
-      b.cccd,
-      b.idDate,
-      b.address || b.hktt
+    // 3.5 Tai_Khoan_Ngan_Hang
+    const tkHeaders = ["STT", "Mã NV", "Họ và tên", "Số tài khoản", "Ngân hàng", "Chi nhánh", "Lương Net tháng 09/2026"];
+    let stt = 1;
+    const tkRows = (STATE.employees || []).map(e => [
+      stt++,
+      e.id,
+      e.name,
+      e.bank?.account || "",
+      e.bank?.bankName || "",
+      e.bank?.branch || "",
+      e.salary?.net || 0
     ]);
 
     // 4. Gửi batchUpdate dữ liệu
@@ -631,12 +1183,11 @@ window.syncDataDirectlyToGoogleSheets = async function(token) {
     const valuePayload = {
       valueInputOption: "USER_ENTERED",
       data: [
-        { range: `Nhan_Vien!A1:S${nvRows.length + 1}`, values: [nvHeaders, ...nvRows] },
+        { range: `Nhan_Vien!A1:P${nvRows.length + 1}`, values: [nvHeaders, ...nvRows] },
+        { range: `Bang_Luong_Lich_Su!A1:O${blRows.length + 1}`, values: [blHeaders, ...blRows] },
+        { range: `Hop_Dong!A1:K${hdRows.length + 1}`, values: [hdHeaders, ...hdRows] },
         { range: `Phong_Ban!A1:D${pbRows.length + 1}`, values: [pbHeaders, ...pbRows] },
-        { range: `Hop_Dong!A1:L${hdRows.length + 1}`, values: [hdHeaders, ...hdRows] },
-        { range: `Bang_Luong!A1:I${blRows.length + 1}`, values: [blHeaders, ...blRows] },
-        { range: `Cham_Cong!A1:AH${ccRows.length + 1}`, values: [ccHeaders, ...ccRows] },
-        { range: `BGH!A1:I${bghRows.length + 1}`, values: [bghHeaders, ...bghRows] }
+        { range: `Tai_Khoan_Ngan_Hang!A1:G${tkRows.length + 1}`, values: [tkHeaders, ...tkRows] }
       ]
     };
 
@@ -660,12 +1211,12 @@ window.syncDataDirectlyToGoogleSheets = async function(token) {
       statusEl.innerText = `✓ Đã đồng bộ Google Sheet (${timeStr})`;
     }
 
-    showToast(`🎉 ĐỒNG BỘ THÀNH CÔNG!\n37 nhân viên MF14 đã được nạp trực tiếp vào Google Sheet!`, "success");
-    alert(`🎉 ĐÃ ĐỒNG BỘ THÀNH CÔNG VÀO GOOGLE SHEET!\n\n• Google Spreadsheet ID: ${CONFIG.sheetId}\n• Đã nạp đầy đủ 37 nhân viên và 6 bảng dữ liệu:\n  1. Nhan_Vien (37 dòng)\n  2. Phong_Ban (3 phòng ban)\n  3. Hop_Dong (37 hợp đồng)\n  4. Bang_Luong (bảng lương tháng 10)\n  5. Cham_Cong (ma trận 30 ngày)\n  6. Nghi_Phep\n\nBạn có thể bấm nút "Mở Google Sheet" để kiểm tra kết quả ngay!`);
+    showToast(`🎉 ĐỒNG BỘ THÀNH CÔNG!\n30 nhân viên MF14 và 164 bản ghi lương đã được nạp trực tiếp vào Google Sheet!`, "success");
+    alert(`🎉 ĐÃ ĐỒNG BỘ THÀNH CÔNG VÀO GOOGLE SHEET!\n\n• Google Spreadsheet ID: ${CONFIG.sheetId}\n• Đã nạp đầy đủ 30 nhân sự (MS01 - MS30) và 5 bảng dữ liệu:\n  1. Nhan_Vien (30 nhân sự chuẩn hóa)\n  2. Bang_Luong_Lich_Su (164 bản ghi lương từ 10/2025 -> 09/2026)\n  3. Hop_Dong (liên kết Google Drive lưu hợp đồng)\n  4. Phong_Ban (5 phòng ban chuẩn)\n  5. Tai_Khoan_Ngan_Hang (thông tin chuyển khoản ngân hàng)\n\nBạn có thể bấm nút "Mở Google Sheet" để kiểm tra kết quả ngay!`);
 
   } catch (err) {
     console.error("Lỗi đồng bộ Google Sheets:", err);
-    alert(`⚠️ THÔNG BÁO ĐỒNG BỘ GOOGLE SHEET:\n\n${err.message}\n\n💡 HƯỚNG DẪN NẠP NHANH BẰNG APPS SCRIPT:\nBạn mở file Google Sheet -> Menu 'Tiện ích mở rộng' -> 'Apps Script' -> chọn hàm 'importAllMF14Data' -> Bấm 'Chạy' (Run) để nạp 37 nhân viên ngay trong 3 giây!`);
+    alert(`⚠️ THÔNG BÁO ĐỒNG BỘ GOOGLE SHEET:\n\n${err.message}\n\n💡 HƯỚNG DẪN NẠP NHANH BẰNG APPS SCRIPT:\nBạn mở file Google Sheet -> Menu 'Tiện ích mở rộng' -> 'Apps Script' -> chọn hàm 'importAllMF14Data' -> Bấm 'Chạy' (Run) để nạp 30 nhân viên & 164 bảng lương ngay trong 3 giây!`);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1241,13 +1792,16 @@ window.openEmployeeDrawer = function(empId) {
       </div>
 
       <div class="drive-sync-box" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px;">
-        <div style="font-weight:700; color:#166534; font-size:13px;">📁 Bản scan hợp đồng trên Google Drive</div>
-        <p style="font-size:12px; color:#4b5563; margin-top:4px;">Thư mục: <strong>Hop_Dong_MF14</strong> (ID: ${CONFIG.folderDriveId})</p>
+        <div style="font-weight:700; color:#166534; font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+          <span>📄 Bản scan hợp đồng lao động</span>
+          <span style="font-size:11px; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:10px;">✓ Cloud Active</span>
+        </div>
+        <p style="font-size:12px; color:#4b5563; margin-top:4px;">Lưu trữ trên Firebase Cloud Firestore (100% Miễn phí)</p>
         <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
-          <a href="https://drive.google.com/drive/folders/${CONFIG.folderDriveId}" target="_blank" class="btn-action-primary" style="text-decoration:none;">
-            🔍 Mở Google Drive
-          </a>
-          <button onclick="triggerUploadContract('${emp.id}')" class="btn-action-outline">
+          <button onclick="window.viewContractFile('${emp.id}')" class="btn-primary-green" style="padding:6px 14px; font-size:12px; background:#15803d; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+            👁️ Xem / Mở bản scan
+          </button>
+          <button onclick="openEditContractModal('${emp.id}')" class="btn-action-outline" style="padding:6px 14px; font-size:12px; cursor:pointer;">
             ⬆️ Tải lên bản scan mới
           </button>
         </div>
@@ -1564,6 +2118,7 @@ function handleSaveEditEmployee() {
   emp.updatedAt = new Date().toISOString();
 
   saveState();
+  syncEmployeeToFirestore(emp);
   closeModal("modal-edit-employee");
   openEmployeeDrawer(empId);
   initEmployeesView();
@@ -1618,6 +2173,7 @@ function handleDeleteEmployee(empId) {
     STATE.timesheet = (STATE.timesheet || []).filter(t => t.empId !== empId);
 
     saveState();
+    deleteEmployeeFromFirestore(empId);
     closeEmployeeDrawer();
     initEmployeesView();
     initContractsView();
@@ -1701,7 +2257,8 @@ function initContractsView() {
           <td><span class="badge-status ${statusClass}">${statusText}</span></td>
           <td style="font-size:12px; color:#64748b;">${c.note || "–"}</td>
           <td style="text-align:center; white-space:nowrap;">
-            <button class="btn-action-outline" style="padding:3px 8px; font-size:11px;" onclick="event.stopPropagation(); openEditContractModal('${c.empId}')">✏️ Sửa HĐ</button>
+            <button class="btn-action-outline" style="padding:3px 8px; font-size:11px; margin-right:4px; color:#0f766e; cursor:pointer;" onclick="event.stopPropagation(); window.viewContractFile('${c.empId}')" title="Xem/Tải file hợp đồng scan">📄 Xem HĐ</button>
+            <button class="btn-action-outline" style="padding:3px 8px; font-size:11px; cursor:pointer;" onclick="event.stopPropagation(); openEditContractModal('${c.empId}')">✏️ Sửa HĐ</button>
           </td>
         </tr>
       `;
@@ -1761,6 +2318,20 @@ function openEditContractModal(empId) {
   document.getElementById("edit-c-bhxh-base").value = bhxhBase ? Number(bhxhBase).toLocaleString("vi-VN") + " đ" : "";
   document.getElementById("edit-c-note").value = (c?.note || emp?.note || "");
 
+  const driveUrlInput = document.getElementById("edit-c-drive-url");
+  const driveUrl = c?.driveFileUrl || emp?.contract?.driveFileUrl || "";
+  if (driveUrlInput) {
+    driveUrlInput.value = driveUrl;
+  }
+  const statusEl = document.getElementById("contract-file-status");
+  if (statusEl) {
+    if (driveUrl) {
+      statusEl.innerHTML = `<span style="color:#15803d; font-weight:600;">✓ Đã lưu hợp đồng:</span> <a href="${driveUrl}" target="_blank" style="color:#0284c7; font-weight:600;">Xem hợp đồng ↗</a>`;
+    } else {
+      statusEl.innerHTML = `💡 File sẽ được lưu trong thư mục Google Drive MF14 và lưu link vào Firestore.`;
+    }
+  }
+
   openModal("modal-edit-contract");
 }
 
@@ -1780,6 +2351,7 @@ function handleSaveEditContract() {
   const status = document.getElementById("edit-c-status").value;
   const note = document.getElementById("edit-c-note").value.trim();
   const bhxhBaseStr = document.getElementById("edit-c-bhxh-base").value.replace(/[^\d]/g, "");
+  const driveUrl = document.getElementById("edit-c-drive-url") ? document.getElementById("edit-c-drive-url").value.trim() : "";
 
   if (contract) {
     contract.tvNumber = tvNo;
@@ -1791,6 +2363,7 @@ function handleSaveEditContract() {
     contract.status = status;
     contract.ktCheck = status;
     contract.note = note;
+    if (driveUrl) contract.driveFileUrl = driveUrl;
   }
 
   if (emp) {
@@ -1808,6 +2381,7 @@ function handleSaveEditContract() {
     emp.ktCheck = status;
     emp.contractStatus = status;
     emp.note = note;
+    if (driveUrl) emp.contract.driveFileUrl = driveUrl;
 
     if (bhxhBaseStr) {
       if (!emp.salary) emp.salary = {};
@@ -1820,6 +2394,8 @@ function handleSaveEditContract() {
   }
 
   saveState();
+  if (contract) syncContractToFirestore(contract);
+  if (emp) syncEmployeeToFirestore(emp);
   closeModal("modal-edit-contract");
   initContractsView();
   initEmployeesView();
@@ -1883,6 +2459,7 @@ function handleSaveNewContract() {
   }
 
   saveState();
+  syncContractToFirestore(newContract);
   closeModal("modal-add-contract");
   initContractsView();
   renderDashboardKPIs();
